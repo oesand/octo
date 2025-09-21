@@ -1,0 +1,76 @@
+name: Auto Release 🚀
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  check_admin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔐 Check if triggered by admin
+        id: check_admin
+        run: |
+          permission=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/collaborators/${{ github.actor }}/permission" \
+            | jq -r .permission)
+          if [ "$permission" = "admin" ]; then
+            echo "is_admin=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_admin=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: ✅ Run if admin
+        if: steps.check_admin.outputs.is_admin == 'true'
+        run: echo "Workflow triggered by an admin - ${{ github.actor }}"
+
+      - name: ❌ Fail if not admin
+        if: steps.check_admin.outputs.is_admin != 'true'
+        run: |
+          echo "Error: This workflow can only be triggered by organization admins"
+          exit 1
+
+  release:
+    needs: check_admin
+    if: needs.check_admin.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: 📦 Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.24.5
+
+      - name: 🛠️ Tests
+        run: make test
+
+      - name: 🧹 Cleanup xxx_test.go files
+        run: find . -name "*_test.go" -delete
+
+      - name: 🧹 Cleanup dependencies
+        run: go mod tidy
+
+      - name: 📌 List files
+        run: tree -Cfi
+      - name: 📌 Write new go.mod into logs
+        run: cat go.mod
+      - name: 📌 Write new go.sum into logs
+        run: cat go.sum
+
+      - name: 🛠️ Commit cleanup
+        run: |
+          git config --global user.name '${{ github.triggering_actor }}'
+          git config --global user.email "${{ github.triggering_actor }}@users.noreply.github.com"
+          
+          git add .
+          git commit --allow-empty -m 'bump ${{ github.ref_name }}'
+
+      - name: 🚀 Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes
