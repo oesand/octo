@@ -99,6 +99,36 @@ func TestNotify_MultipleHandlers(t *testing.T) {
 	}
 }
 
+func TestNotify_HandlerInjectValue(t *testing.T) {
+	c := octo.New()
+	handler := &LoggingHandler{}
+	octo.InjectValue(c, handler)
+
+	Notify[UserCreated](c, context.Background(), UserCreated{Username: "alice"})
+
+	handler.mu.Lock()
+	defer handler.mu.Unlock()
+	if len(handler.entries) != 1 || handler.entries[0] != "log:alice" {
+		t.Fatalf("expected [log:alice], got %#v", handler.entries)
+	}
+}
+
+func TestNotify_HandlerInject(t *testing.T) {
+	c := octo.New()
+	handler := &LoggingHandler{}
+	octo.Inject(c, func(_ *octo.Container) *LoggingHandler {
+		return handler
+	})
+
+	Notify[UserCreated](c, context.Background(), UserCreated{Username: "alice"})
+
+	handler.mu.Lock()
+	defer handler.mu.Unlock()
+	if len(handler.entries) != 1 || handler.entries[0] != "log:alice" {
+		t.Fatalf("expected [log:alice], got %#v", handler.entries)
+	}
+}
+
 func TestNotify_ContextCancelStopsHandlers(t *testing.T) {
 	c := octo.New()
 
