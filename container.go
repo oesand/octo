@@ -87,11 +87,14 @@ func TryResolveNamed[T any](container *Container, name string) T {
 }
 
 func resolve[T any](container *Container, name string, required bool) T {
+	container = containerOrDefault(container)
+	container.mu.RLock()
+	defer container.mu.RUnlock()
+
 	var decl ServiceDeclaration
 
 	typ := reflect.TypeFor[T]()
-	injections := ResolveInjections(container)
-	for inject := range injections {
+	for _, inject := range container.services {
 		if !inject.Type().AssignableTo(typ) {
 			continue
 		}
@@ -121,10 +124,10 @@ func resolve[T any](container *Container, name string, required bool) T {
 // ResolveInjections returns an iterator over all registered services in the container.
 func ResolveInjections(container *Container) iter.Seq[ServiceDeclaration] {
 	container = containerOrDefault(container)
-	container.mu.RLock()
-	defer container.mu.RUnlock()
-
 	return func(yield func(ServiceDeclaration) bool) {
+		container.mu.RLock()
+		defer container.mu.RUnlock()
+
 		for _, service := range container.services {
 			if !yield(service) {
 				break
@@ -134,6 +137,7 @@ func ResolveInjections(container *Container) iter.Seq[ServiceDeclaration] {
 }
 
 // CleanInjections removes all service declarations that match the selector function.
+// Do not use octo.* functions inside selector, this may cause deadlocks
 func CleanInjections(container *Container, selector func(decl ServiceDeclaration) bool) {
 	container = containerOrDefault(container)
 	container.mu.Lock()
