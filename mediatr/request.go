@@ -14,20 +14,6 @@ type RequestHandler[TRequest any, TResponse any] interface {
 	Request(ctx context.Context, request TRequest) (TResponse, error)
 }
 
-// InjectRequest registers a RequestHandler into the container.
-// This allows the handler to be resolved later by its request/response type combination.
-func InjectRequest[TRequest any, TResponse any](
-	container *octo.Container,
-	provider octo.Provider[RequestHandler[TRequest, TResponse]],
-) {
-	handler := octo.TryResolve[RequestHandler[TRequest, TResponse]](container)
-	if handler != nil {
-		panic("octo: request handler already registered")
-	}
-
-	octo.Inject(container, provider)
-}
-
 // Send resolves a RequestHandler for the given request/response types from the container
 // and calls its Request method. This is the entry point for executing a request.
 func Send[TRequest any, TResponse any](

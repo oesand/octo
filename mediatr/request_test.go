@@ -53,9 +53,24 @@ func (h *FailHandler) Request(ctx context.Context, req FailRequest) (FailRespons
 
 // --- Tests ---
 
+func TestInjectValueAndSend_Success(t *testing.T) {
+	c := octo.New()
+
+	octo.InjectValue(c, &EchoHandler{})
+
+	resp, err := Send[EchoRequest, EchoResponse](c, context.Background(), EchoRequest{Message: "hello"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.Reply != "Echo: hello" {
+		t.Fatalf("expected 'Echo: hello', got '%s'", resp.Reply)
+	}
+}
+
 func TestInjectAndSend_Success(t *testing.T) {
 	c := octo.New()
-	InjectRequest[EchoRequest, EchoResponse](c, func(c *octo.Container) RequestHandler[EchoRequest, EchoResponse] {
+
+	octo.Inject(c, func(container *octo.Container) *EchoHandler {
 		return &EchoHandler{}
 	})
 
@@ -70,9 +85,8 @@ func TestInjectAndSend_Success(t *testing.T) {
 
 func TestInjectAndSend_Error(t *testing.T) {
 	c := octo.New()
-	InjectRequest[EchoRequest, EchoResponse](c, func(c *octo.Container) RequestHandler[EchoRequest, EchoResponse] {
-		return &EchoHandler{}
-	})
+
+	octo.InjectValue(c, &EchoHandler{})
 
 	resp, err := Send[EchoRequest, EchoResponse](c, context.Background(), EchoRequest{})
 	if err == nil {
@@ -81,26 +95,6 @@ func TestInjectAndSend_Error(t *testing.T) {
 	if resp.Reply != "" {
 		t.Fatalf("expected empty reply, got '%s'", resp.Reply)
 	}
-}
-
-func TestInject_PanicWhenAlreadyRegistered(t *testing.T) {
-	c := octo.New()
-	InjectRequest[EchoRequest, EchoResponse](c, func(c *octo.Container) RequestHandler[EchoRequest, EchoResponse] {
-		return &EchoHandler{}
-	})
-
-	defer func() {
-		r := recover()
-		if r == nil {
-			t.Fatal("expected panic when handler is registered")
-		}
-		if r != "octo: request handler already registered" {
-			t.Fatalf("unexpected panic message, got '%s'", r)
-		}
-	}()
-	InjectRequest[EchoRequest, EchoResponse](c, func(c *octo.Container) RequestHandler[EchoRequest, EchoResponse] {
-		return &EchoHandler{}
-	})
 }
 
 func TestSend_PanicsWhenHandlerNotRegistered(t *testing.T) {
@@ -121,16 +115,9 @@ func TestSend_PanicsWhenHandlerNotRegistered(t *testing.T) {
 func TestInjectManyDifferentHandlers(t *testing.T) {
 	c := octo.New()
 
-	// Register multiple handlers
-	InjectRequest[EchoRequest, EchoResponse](c, func(c *octo.Container) RequestHandler[EchoRequest, EchoResponse] {
-		return &EchoHandler{}
-	})
-	InjectRequest[SumRequest, SumResponse](c, func(c *octo.Container) RequestHandler[SumRequest, SumResponse] {
-		return &SumHandler{}
-	})
-	InjectRequest[FailRequest, FailResponse](c, func(c *octo.Container) RequestHandler[FailRequest, FailResponse] {
-		return &FailHandler{}
-	})
+	octo.InjectValue(c, &EchoHandler{})
+	octo.InjectValue(c, &SumHandler{})
+	octo.InjectValue(c, &FailHandler{})
 
 	// Test Echo
 	echoResp, err := Send[EchoRequest, EchoResponse](c, context.Background(), EchoRequest{Message: "test"})

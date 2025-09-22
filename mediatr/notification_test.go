@@ -63,11 +63,9 @@ func (h *SecondHandler) Notification(ctx context.Context, n UserCreated) {
 func TestNotify_SingleHandler(t *testing.T) {
 	c := octo.New()
 	handler := &LoggingHandler{}
-	InjectNotification[UserCreated](c, func(c *octo.Container) NotificationHandler[UserCreated] {
-		return handler
-	})
+	octo.InjectValue(c, handler)
 
-	Notify[UserCreated](c, context.Background(), UserCreated{Username: "alice"})
+	Publish[UserCreated](c, context.Background(), UserCreated{Username: "alice"})
 
 	handler.mu.Lock()
 	defer handler.mu.Unlock()
@@ -81,10 +79,10 @@ func TestNotify_MultipleHandlers(t *testing.T) {
 	log := &LoggingHandler{}
 	audit := &AuditHandler{}
 
-	InjectNotification[UserCreated](c, func(c *octo.Container) NotificationHandler[UserCreated] { return log })
-	InjectNotification[UserCreated](c, func(c *octo.Container) NotificationHandler[UserCreated] { return audit })
+	octo.InjectValue(c, log)
+	octo.InjectValue(c, audit)
 
-	Notify[UserCreated](c, context.Background(), UserCreated{Username: "bob"})
+	Publish[UserCreated](c, context.Background(), UserCreated{Username: "bob"})
 
 	log.mu.Lock()
 	audit.mu.Lock()
@@ -99,20 +97,6 @@ func TestNotify_MultipleHandlers(t *testing.T) {
 	}
 }
 
-func TestNotify_HandlerInjectValue(t *testing.T) {
-	c := octo.New()
-	handler := &LoggingHandler{}
-	octo.InjectValue(c, handler)
-
-	Notify[UserCreated](c, context.Background(), UserCreated{Username: "alice"})
-
-	handler.mu.Lock()
-	defer handler.mu.Unlock()
-	if len(handler.entries) != 1 || handler.entries[0] != "log:alice" {
-		t.Fatalf("expected [log:alice], got %#v", handler.entries)
-	}
-}
-
 func TestNotify_HandlerInject(t *testing.T) {
 	c := octo.New()
 	handler := &LoggingHandler{}
@@ -120,7 +104,7 @@ func TestNotify_HandlerInject(t *testing.T) {
 		return handler
 	})
 
-	Notify[UserCreated](c, context.Background(), UserCreated{Username: "alice"})
+	Publish[UserCreated](c, context.Background(), UserCreated{Username: "alice"})
 
 	handler.mu.Lock()
 	defer handler.mu.Unlock()
@@ -135,18 +119,18 @@ func TestNotify_ContextCancelStopsHandlers(t *testing.T) {
 	blocking := &BlockingHandler{}
 	second := &SecondHandler{}
 
-	InjectNotification[UserCreated](c, func(c *octo.Container) NotificationHandler[UserCreated] { return blocking })
-	InjectNotification[UserCreated](c, func(c *octo.Container) NotificationHandler[UserCreated] { return second })
+	octo.InjectValue(c, blocking)
+	octo.InjectValue(c, second)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// Cancel shortly after Notify starts
+	// Cancel shortly after Publish starts
 	go func() {
 		time.Sleep(10 * time.Millisecond)
 		cancel()
 	}()
 
-	Notify[UserCreated](c, ctx, UserCreated{Username: "carol"})
+	Publish[UserCreated](c, ctx, UserCreated{Username: "carol"})
 
 	if !blocking.called.Load() {
 		t.Error("expected blocking handler to be called")

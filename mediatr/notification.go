@@ -11,20 +11,11 @@ type NotificationHandler[TNotification any] interface {
 	Notification(ctx context.Context, notification TNotification)
 }
 
-// InjectNotification registers a NotificationHandler for the given TNotification type
-// in the provided container. Multiple handlers of the same notification type can be registered.
-func InjectNotification[TNotification any](
-	container *octo.Container,
-	provider octo.Provider[NotificationHandler[TNotification]],
-) {
-	octo.Inject(container, provider)
-}
-
-// Notify publishes a notification of type TNotification to all registered NotificationHandlers.
+// Publish publishes a notification of type TNotification to all registered NotificationHandlers.
 // The notification is sent to every matching handler until either:
 //   - The context is cancelled, or
 //   - All handlers have been executed.
-func Notify[TNotification any](
+func Publish[TNotification any](
 	container *octo.Container,
 	ctx context.Context,
 	notification TNotification,
