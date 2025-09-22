@@ -4,118 +4,178 @@ import (
 	"context"
 	"github.com/oesand/octo"
 	"reflect"
-	"sync/atomic"
+	"sync"
 	"testing"
 )
 
-// --- Sample notification types ---
+// === Test event types ===
+type EventA struct{ V string }
+type EventB struct{ N int }
 
-type EventA struct{ ID int }
-type EventB struct{ Name string }
+// === Handlers ===
 
-// --- Handlers ---
-
-type HandlerA struct {
-	Called atomic.Bool
-}
+// Valid handler for EventA
+type HandlerA struct{ Called bool }
 
 func (h *HandlerA) Notification(ctx context.Context, e EventA) {
-	h.Called.Store(true)
+	h.Called = true
 }
 
-type HandlerB struct {
-	Called atomic.Bool
-}
+// Valid handler for EventB
+type HandlerB struct{ Called bool }
 
 func (h *HandlerB) Notification(ctx context.Context, e EventB) {
-	h.Called.Store(true)
+	h.Called = true
 }
 
-// --- Tests ---
+// Wrong signature → should be ignored
+type BadHandler struct{}
 
-func TestNotificationEventTypes(t *testing.T) {
-	c := octo.New()
+func (h *BadHandler) Notification(ctx context.Context) {}
 
-	// Inject handlers
-	octo.Inject(c, func(c *octo.Container) *HandlerA { return &HandlerA{} })
-	octo.Inject(c, func(c *octo.Container) *HandlerB { return &HandlerB{} })
+// Custom handler to count calls
+type CtxHandler struct {
+	mu    *sync.Mutex
+	calls *int
+}
 
-	types := make([]reflect.Type, 0)
-	seq := notificationEventTypes(c)
-	seq(func(t reflect.Type) bool {
-		types = append(types, t)
-		return true
-	})
+func (h *CtxHandler) Notification(ctx context.Context, e EventA) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	*h.calls++
+}
 
-	if len(types) != 2 {
-		t.Fatalf("expected 2 event types, got %d", len(types))
+// === Tests ===
+
+func TestNotificationEventTypes_NoHandlers(t *testing.T) {
+	container := octo.New()
+	manager := InjectManager(container)
+
+	got := []reflect.Type{}
+	for ev := range notificationEventTypes(manager.container) {
+		got = append(got, ev)
 	}
 
-	expected := []reflect.Type{reflect.TypeOf(EventA{}), reflect.TypeOf(EventB{})}
-	for _, want := range expected {
-		found := false
-		for _, got := range types {
-			if got == want {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("expected type %v not found", want)
-		}
+	if len(got) != 0 {
+		t.Fatalf("expected no event types, got %v", got)
+	}
+}
+
+func TestNotificationEventTypes_ValidHandler(t *testing.T) {
+	container := octo.New()
+	octo.InjectValue(container, &HandlerA{})
+	manager := InjectManager(container)
+
+	got := []reflect.Type{}
+	for ev := range notificationEventTypes(manager.container) {
+		got = append(got, ev)
+	}
+
+	if len(got) != 1 {
+		t.Fatalf("expected 1 event type, got %d", len(got))
+	}
+	if got[0] != reflect.TypeOf(EventA{}) {
+		t.Fatalf("expected EventA type, got %v", got[0])
+	}
+}
+
+func TestNotificationEventTypes_DeduplicatesTypes(t *testing.T) {
+	container := octo.New()
+	octo.InjectValue(container, &HandlerA{})
+	octo.InjectValue(container, &HandlerA{}) // duplicate
+	manager := InjectManager(container)
+
+	count := 0
+	for _ = range notificationEventTypes(manager.container) {
+		count++
+	}
+
+	if count != 1 {
+		t.Fatalf("expected 1 unique event type, got %d", count)
+	}
+}
+
+func TestNotificationEventTypes_MultipleTypes(t *testing.T) {
+	container := octo.New()
+	octo.InjectValue(container, &HandlerA{})
+	octo.InjectValue(container, &HandlerB{})
+	manager := InjectManager(container)
+
+	got := map[reflect.Type]bool{}
+	for ev := range notificationEventTypes(manager.container) {
+		got[ev] = true
+	}
+
+	if !got[reflect.TypeOf(EventA{})] {
+		t.Error("expected EventA type discovered")
+	}
+	if !got[reflect.TypeOf(EventB{})] {
+		t.Error("expected EventB type discovered")
 	}
 }
 
 func TestNotifyEvents_CallsMatchingHandler(t *testing.T) {
-	c := octo.New()
-	hA := &HandlerA{}
-	hB := &HandlerB{}
-
-	octo.InjectNamedValue(c, "a", hA)
-	octo.InjectNamedValue(c, "b", hB)
+	container := octo.New()
+	h := &HandlerA{}
+	octo.InjectValue(container, h)
 
 	ctx := context.Background()
+	evVal := reflect.ValueOf(EventA{V: "x"})
+	notifyEvents(container, ctx, reflect.TypeOf(EventA{}), evVal)
 
-	// Notify EventA
-	evType := reflect.TypeOf(EventA{})
-	evVal := reflect.ValueOf(EventA{ID: 1})
-	notifyEvents(c, ctx, evType, evVal)
-
-	if !hA.Called.Load() {
-		t.Errorf("HandlerA was not called")
-	}
-	if hB.Called.Load() {
-		t.Errorf("HandlerB should not be called")
-	}
-
-	// Reset and notify EventB
-	hA.Called.Store(false)
-	hB.Called.Store(false)
-	evTypeB := reflect.TypeOf(EventB{})
-	evValB := reflect.ValueOf(EventB{Name: "test"})
-	notifyEvents(c, ctx, evTypeB, evValB)
-
-	if hA.Called.Load() {
-		t.Errorf("HandlerA should not be called")
-	}
-	if !hB.Called.Load() {
-		t.Errorf("HandlerB was not called")
+	if !h.Called {
+		t.Fatal("expected handler to be called")
 	}
 }
 
-func TestNotifyEvents_ContextCancelled(t *testing.T) {
-	c := octo.New()
+func TestNotifyEvents_SkipsWrongType(t *testing.T) {
+	container := octo.New()
 	h := &HandlerA{}
-	octo.InjectNamedValue(c, "a", h)
+	octo.InjectValue(container, h)
+
+	ctx := context.Background()
+	evVal := reflect.ValueOf(EventB{N: 42})
+	notifyEvents(container, ctx, reflect.TypeOf(EventB{}), evVal)
+
+	if h.Called {
+		t.Fatal("expected handler not to be called")
+	}
+}
+
+func TestNotifyEvents_MultipleHandlers(t *testing.T) {
+	container := octo.New()
+	h1 := &HandlerA{}
+	h2 := &HandlerA{}
+	octo.InjectValue(container, h1)
+	octo.InjectValue(container, h2)
+
+	ctx := context.Background()
+	evVal := reflect.ValueOf(EventA{V: "multi"})
+	notifyEvents(container, ctx, reflect.TypeOf(EventA{}), evVal)
+
+	if !h1.Called || !h2.Called {
+		t.Fatal("expected both handlers called")
+	}
+}
+
+func TestNotifyEvents_StopsOnContextCancel(t *testing.T) {
+	container := octo.New()
+
+	var mu sync.Mutex
+	calls := 0
+
+	octo.InjectValue(container, &CtxHandler{mu: &mu, calls: &calls})
+	octo.InjectValue(container, &CtxHandler{mu: &mu, calls: &calls})
 
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // immediately cancel
+	cancel() // cancel immediately
 
-	evType := reflect.TypeOf(EventA{})
-	evVal := reflect.ValueOf(EventA{ID: 42})
-	notifyEvents(c, ctx, evType, evVal)
+	evVal := reflect.ValueOf(EventA{V: "stop"})
+	notifyEvents(container, ctx, reflect.TypeOf(EventA{}), evVal)
 
-	if h.Called.Load() {
-		t.Errorf("Handler should not be called when context is canceled")
+	mu.Lock()
+	defer mu.Unlock()
+	if calls != 0 {
+		t.Fatalf("expected no calls due to cancelled context, got %d", calls)
 	}
 }

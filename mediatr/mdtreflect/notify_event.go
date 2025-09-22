@@ -23,7 +23,7 @@ func notificationEventTypes(container *octo.Container) iter.Seq[reflect.Type] {
 			}
 
 			methodType := method.Type()
-			if methodType.NumIn() != 2 || !methodType.In(0).AssignableTo(ctxType) {
+			if methodType.NumIn() != 2 || !methodType.In(0).AssignableTo(ctxType) || methodType.NumOut() != 0 {
 				continue
 			}
 
@@ -57,7 +57,7 @@ func notifyEvents(container *octo.Container, ctx context.Context, evType reflect
 		}
 
 		methodType := method.Type()
-		if methodType.NumIn() != 2 || !methodType.In(0).AssignableTo(ctxType) {
+		if methodType.NumIn() != 2 || !methodType.In(0).AssignableTo(ctxType) || methodType.NumOut() != 0 {
 			continue
 		}
 
