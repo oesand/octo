@@ -1,35 +1,37 @@
 package parse
 
-type InitType int
-
-const (
-	StructInit InitType = iota
-	FuncInit
-)
-
-type FieldKind int
-
-const (
-	PointerField FieldKind = iota
-	ArrayField
-)
-
-type ParsedFile struct {
-	Depends []*Depend
+type PackageDecl struct {
+	Path  string
+	Funcs []FuncDecl
 }
 
-type Depend struct {
-	Name   string
-	Kind   InitType
-	Fields []*FieldInfo
-
-	ContainerOption string
-	KeyOption       string
+type FuncDecl struct {
+	Name    string
+	Injects []InjectDecl
 }
 
-type FieldInfo struct {
-	KindType  FieldKind
-	TypeAlias string
+type InjectDeclType int
 
+const (
+	InjectDeclStruct InjectDeclType = iota
+	InjectDeclFunc
+)
+
+type InjectDecl struct {
 	KeyOption string
+	Type      InjectDeclType
+	Locale    LocaleInfo
+	Fields    []InjectDeclField
+}
+
+type InjectDeclField struct {
+	Name      string
+	KeyOption string
+	Locale    LocaleInfo
+}
+
+type LocaleInfo struct {
+	PtrLevel int
+	Package  string
+	Name     string
 }
