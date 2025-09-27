@@ -1,6 +1,7 @@
 package octo
 
 import (
+	"slices"
 	"sync/atomic"
 	"testing"
 )
@@ -84,6 +85,33 @@ func TestResolveInjectionsIteration(t *testing.T) {
 	}
 
 	if c := count.Load(); c != 2 {
+		t.Fatalf("expected 2 injection, got %d", c)
+	}
+}
+
+func TestResolveOfTypeIteration(t *testing.T) {
+	c := New()
+	InjectValue(c, &MyService{})
+	InjectValue(c, &OtherService{})
+
+	iter := ResolveOfType[*MyService](c)
+	sl := slices.Collect(iter)
+
+	if c := len(sl); c != 1 {
+		t.Fatalf("expected 1 injection, got %d", c)
+	}
+}
+
+func TestResolveOfTypeIterationByInterface(t *testing.T) {
+	c := New()
+	InjectValue(c, &MyService{})
+	InjectValue(c, &MyService{})
+	InjectValue(c, &OtherService{})
+
+	iter := ResolveOfType[ServiceInterface](c)
+	sl := slices.Collect(iter)
+
+	if c := len(sl); c != 2 {
 		t.Fatalf("expected 2 injection, got %d", c)
 	}
 }

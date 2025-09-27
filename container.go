@@ -136,6 +136,19 @@ func ResolveInjections(container *Container) iter.Seq[ServiceDeclaration] {
 	}
 }
 
+// ResolveOfType returns an iterator over registered services in the container
+// if the service's type is assignable to T (implements interface or same type).
+func ResolveOfType[T any](container *Container) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		injects := ResolveInjections(container)
+		for decl := range injects {
+			if DeclOfType[T](decl) && !yield(decl.Value().(T)) {
+				break
+			}
+		}
+	}
+}
+
 // CleanInjections removes all service declarations that match the selector function.
 // Do not use octo.* functions inside selector, this may cause deadlocks
 func CleanInjections(container *Container, selector func(decl ServiceDeclaration) bool) {
