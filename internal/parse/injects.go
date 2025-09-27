@@ -1,15 +1,14 @@
 package parse
 
 import (
-	"fmt"
+	"github.com/oesand/octo/internal/decl"
 	"go/ast"
 	"go/types"
 	"golang.org/x/tools/go/packages"
-	"log"
 	"strings"
 )
 
-func ParseInjects() []PackageDecl {
+func ParseInjects() ([]decl.PackageDecl, error) {
 	cfg := &packages.Config{
 		Mode: packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo |
 			packages.NeedImports | packages.NeedDeps,
@@ -21,10 +20,10 @@ func ParseInjects() []PackageDecl {
 
 	pkgs, err := packages.Load(cfg, "./...")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	var pkgDecls []PackageDecl
+	var pkgDecls []decl.PackageDecl
 	for _, pkg := range pkgs {
 		imports := map[string]string{}
 		var octogenAlias string
@@ -48,7 +47,7 @@ func ParseInjects() []PackageDecl {
 			continue
 		}
 
-		var funcs []FuncDecl
+		var funcs []decl.FuncDecl
 
 		// scan functions
 		for _, file := range pkg.Syntax {
@@ -74,106 +73,186 @@ func ParseInjects() []PackageDecl {
 			}
 
 			ast.Inspect(file, func(n ast.Node) bool {
+				if err != nil {
+					return false
+				}
+
 				fn, ok := n.(*ast.FuncDecl)
 				if !ok {
 					return true
 				}
 
-				var injects []InjectDecl
+				var injects []decl.InjectedDecl
 				ast.Inspect(fn.Body, func(nn ast.Node) bool {
+					if err != nil {
+						return false
+					}
 					call, ok := nn.(*ast.CallExpr)
 					if !ok {
 						return true
 					}
 
-					// look for "alias.Inject[T]" or "alias.InjectNamed[T]"
-					if idx, ok := call.Fun.(*ast.IndexExpr); ok {
-						if sel, ok := idx.X.(*ast.SelectorExpr); ok {
-							if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == octogenAlias {
-								kind := sel.Sel.Name
-								if kind == "Inject" || kind == "InjectNamed" {
-									typ := pkg.TypesInfo.Types[idx.Index].Type
-									key := ""
-									if kind == "InjectNamed" && len(call.Args) > 0 {
-										if bl, ok := call.Args[0].(*ast.BasicLit); ok {
-											key = bl.Value[1 : len(bl.Value)-1] // strip quotes
-										}
-									}
+					// look for "octogen.Inject(func...)"
+					if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
+						if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == octogenAlias {
+							kind := sel.Sel.Name
+							// look for "octogen.Inject(...)" inside
+							if kind == "Inject" && 0 < len(call.Args) && len(call.Args) <= 2 {
+								const injectTypeParamUnsupportedError = "call without generic support only link to function"
 
-									typ, declLocale := parseTypeLocale(typ)
-									if declLocale == nil {
-										return true
-									}
-
-									fmt.Printf("Decl locale: %v \n", declLocale)
-
-									var declType InjectDeclType
-									var fields []InjectDeclField
-									switch t := typ.(type) {
-									// Look inner struct{...} declaration fields
-									case *types.Struct:
-										declType = InjectDeclStruct
-										for i := 0; i < t.NumFields(); i++ {
-											field := t.Field(i)
-											if !field.Exported() {
-												continue
-											}
-
-											fieldTags := t.Tag(i)
-											var fieldKeyOption string
-											if idx := strings.Index(fieldTags, `key:"`); idx >= 0 {
-												rest := fieldTags[idx+5:]
-												if end := strings.Index(rest, `"`); end > 0 {
-													fieldKeyOption = rest[:end]
-												}
-											}
-
-											_, fieldTypeLoc := parseTypeLocale(field.Type())
-
-											fields = append(fields, InjectDeclField{
-												Name:      field.Name(),
-												KeyOption: fieldKeyOption,
-												Locale:    *fieldTypeLoc,
-											})
-										}
-
-										fmt.Printf("Fields: %v \n", fields)
-
-									// Look function(...) declaration parameters
-									case *types.Signature:
-										declType = InjectDeclFunc
-										for prm := range t.Params().Variables() {
-											_, fieldTypeLoc := parseTypeLocale(prm.Type())
-
-											fields = append(fields, InjectDeclField{
-												Name:   prm.Name(),
-												Locale: *fieldTypeLoc,
-											})
-										}
-
-										fmt.Printf("Fields: %v \n", fields)
-
+								funcExpr := call.Args[0]
+								var funcSig *types.Signature
+								var funcObj *types.Func
+								switch t := funcExpr.(type) {
+								case *ast.Ident:
+									switch t.Obj.Decl.(type) {
+									case *ast.FuncDecl:
+										funcSig = pkg.TypesInfo.Types[funcExpr].Type.(*types.Signature)
+										funcObj = pkg.TypesInfo.ObjectOf(t).(*types.Func)
 									default:
-										return true
+										err = locatedErr(pkg.Fset, ident.Pos(), injectTypeParamUnsupportedError)
+										return false
+									}
+								default:
+									err = locatedErr(pkg.Fset, ident.Pos(), injectTypeParamUnsupportedError)
+									return false
+								}
+
+								if funcSig.Results().Len() != 1 {
+									err = locatedErr(pkg.Fset, ident.Pos(), "linked function should return only one result")
+									return false
+								}
+
+								var returnLoc *decl.LocaleInfo
+								returnLoc, err = parseFieldLocale(funcSig.Results().At(0).Type())
+								if err != nil {
+									err = locatedErr(pkg.Fset, ident.Pos(), "linked function returning: %s", err)
+									return false
+								}
+
+								var key string
+								if len(call.Args) > 1 {
+									if bl, ok := call.Args[0].(*ast.BasicLit); ok {
+										key = bl.Value[1 : len(bl.Value)-1] // strip quotes
+									} else {
+										err = locatedErr(pkg.Fset, ident.Pos(), "call second parameter can be only string")
+										return false
+									}
+								}
+
+								var params []decl.LocaleInfo
+								for i := 0; i < funcSig.Params().Len(); i++ {
+									prm := funcSig.Params().At(i)
+
+									var prmLoc *decl.LocaleInfo
+									prmLoc, err = parseFieldLocale(prm.Type())
+									if err != nil {
+										err = locatedErr(pkg.Fset, ident.Pos(), "linked function param (%s [%d]): %s", prm.Name(), i+1, err)
+										return false
 									}
 
-									fmt.Printf("Decl locale: %v, Fields: %v \n", declLocale, fields)
-
-									injects = append(injects, InjectDecl{
-										KeyOption: key,
-										Type:      declType,
-										Fields:    fields,
-										Locale:    *declLocale,
-									})
+									params = append(params, *prmLoc)
 								}
+
+								injects = append(injects, decl.InjectedFunc{
+									Package:   funcObj.Pkg().Path(),
+									Name:      funcObj.Name(),
+									Params:    params,
+									Return:    *returnLoc,
+									KeyOption: key,
+								})
 							}
 						}
 					}
+
+					// look for "alias.Inject[T]" or "alias.InjectNamed[T]"
+					//if idx, ok := call.Fun.(*ast.IndexExpr); ok {
+					//	if sel, ok := idx.X.(*ast.SelectorExpr); ok {
+					//		if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == octogenAlias {
+					//			kind := sel.Sel.Name
+					//			if kind == "Inject" {
+					//				typ := pkg.TypesInfo.Types[idx.Index].Type
+					//				key := ""
+					//				if len(call.Args) > 0 {
+					//					if bl, ok := call.Args[0].(*ast.BasicLit); ok {
+					//						key = bl.Value[1 : len(bl.Value)-1] // strip quotes
+					//					}
+					//				}
+					//
+					//				typ, declLocale := parseTypeLocale(typ)
+					//				if declLocale == nil {
+					//					return true
+					//				}
+					//
+					//				fmt.Printf("Decl locale: %v \n", declLocale)
+					//
+					//				var declType InjectDeclType
+					//				var fields []InjectDeclField
+					//				switch t := typ.(type) {
+					//				// Look inner struct{...} declaration fields
+					//				case *types.Struct:
+					//					declType = InjectDeclStruct
+					//					for i := 0; i < t.NumFields(); i++ {
+					//						field := t.Field(i)
+					//						if !field.Exported() {
+					//							continue
+					//						}
+					//
+					//						fieldTags := t.Tag(i)
+					//						var fieldKeyOption string
+					//						if idx := strings.Index(fieldTags, `key:"`); idx >= 0 {
+					//							rest := fieldTags[idx+5:]
+					//							if end := strings.Index(rest, `"`); end > 0 {
+					//								fieldKeyOption = rest[:end]
+					//							}
+					//						}
+					//
+					//						_, fieldTypeLoc := parseTypeLocale(field.Type())
+					//
+					//						fields = append(fields, InjectDeclField{
+					//							Name:      field.Name(),
+					//							KeyOption: fieldKeyOption,
+					//							Locale:    *fieldTypeLoc,
+					//						})
+					//					}
+					//
+					//					fmt.Printf("Fields: %v \n", fields)
+					//
+					//				// Look function(...) declaration parameters
+					//				case *types.Signature:
+					//					declType = InjectDeclFunc
+					//					for prm := range t.Params().Variables() {
+					//						_, fieldTypeLoc := parseTypeLocale(prm.Type())
+					//
+					//						fields = append(fields, InjectDeclField{
+					//							Name:   prm.Name(),
+					//							Locale: *fieldTypeLoc,
+					//						})
+					//					}
+					//
+					//					fmt.Printf("Fields: %v \n", fields)
+					//
+					//				default:
+					//					return true
+					//				}
+					//
+					//				fmt.Printf("Decl locale: %v, Fields: %v \n", declLocale, fields)
+					//
+					//				injects = append(injects, InjectDecl{
+					//					KeyOption: key,
+					//					Type:      declType,
+					//					Fields:    fields,
+					//					Locale:    *declLocale,
+					//				})
+					//			}
+					//		}
+					//	}
+					//}
 					return true
 				})
 
 				if len(injects) > 0 {
-					funcs = append(funcs, FuncDecl{
+					funcs = append(funcs, decl.FuncDecl{
 						Name:    fn.Name.Name,
 						Injects: injects,
 					})
@@ -181,15 +260,19 @@ func ParseInjects() []PackageDecl {
 
 				return true
 			})
+
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		if len(funcs) > 0 {
-			pkgDecls = append(pkgDecls, PackageDecl{
+			pkgDecls = append(pkgDecls, decl.PackageDecl{
 				Path:  pkg.Dir,
 				Funcs: funcs,
 			})
 		}
 	}
 
-	return pkgDecls
+	return pkgDecls, nil
 }

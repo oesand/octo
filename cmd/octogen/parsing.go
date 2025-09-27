@@ -3,7 +3,11 @@
 
 package main
 
-import gg "github.com/oesand/octo/octogen"
+import (
+	gg "github.com/oesand/octo/octogen"
+)
+
+type Inf interface{}
 
 type Other struct{}
 
@@ -16,10 +20,20 @@ type Struct struct {
 	Other *Other
 }
 
+func (s *Struct) Do() {
+
+}
+
+func NewHelloWorld(p []Inf) *Other {
+	return &Other{}
+}
+
 func Include() {
 	gg.Inject[*Other]()
-	gg.InjectNamed[*Named]("key1")
+	gg.Inject[*Named]("key1")
 	gg.Inject[*Struct]()
+
+	gg.Inject(NewHelloWorld)
 }
 
 /*
