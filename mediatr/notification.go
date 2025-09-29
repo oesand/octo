@@ -20,13 +20,18 @@ func Publish[TNotification any](
 	ctx context.Context,
 	notification TNotification,
 ) {
-	handlers := octo.ResolveOfType[NotificationHandler[TNotification]](container)
-	for handler := range handlers {
+	injects := octo.ResolveInjections(container)
+	for decl := range injects {
+		if !octo.DeclOfType[NotificationHandler[TNotification]](decl) {
+			continue
+		}
+
 		// stop if context was cancelled
 		if ctx.Err() != nil {
 			break
 		}
 
+		handler := decl.Value().(NotificationHandler[TNotification])
 		handler.Notification(ctx, notification)
 	}
 }
