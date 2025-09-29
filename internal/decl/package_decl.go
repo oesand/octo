@@ -1,8 +1,9 @@
 package decl
 
 type PackageDecl struct {
-	Path  string
-	Funcs []FuncDecl
+	Path    string
+	Imports []string
+	Funcs   []FuncDecl
 }
 
 type FuncDecl struct {
@@ -10,11 +11,11 @@ type FuncDecl struct {
 	Injects []InjectedDecl
 }
 
-type InjectedDeclType int
+type InjectedDeclType string
 
 const (
-	InjectedStructType InjectedDeclType = iota
-	InjectedFuncType
+	InjectedStructType InjectedDeclType = "struct"
+	InjectedFuncType   InjectedDeclType = "func"
 )
 
 type InjectedDecl interface {
