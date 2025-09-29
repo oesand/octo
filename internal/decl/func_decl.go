@@ -1,14 +1,13 @@
 package decl
 
 type InjectedFunc struct {
-	Package string
-	Name    string
-	Params  []LocaleInfo
-	Return  LocaleInfo
+	Locale *LocaleInfo
+	Params []*LocaleInfo
+	Return *LocaleInfo
 
 	KeyOption string
 }
 
-func (InjectedFunc) Type() InjectedDeclType {
+func (*InjectedFunc) Type() InjectedDeclType {
 	return InjectedFuncType
 }

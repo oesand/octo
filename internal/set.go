@@ -15,6 +15,15 @@ func (m *Set[K]) Add(keys ...K) {
 	}
 }
 
+func (m *Set[K]) Del(keys ...K) {
+	if *m == nil {
+		return
+	}
+	for _, key := range keys {
+		delete(*m, key)
+	}
+}
+
 func (m *Set[K]) Contains(key K) bool {
 	if *m == nil {
 		return false

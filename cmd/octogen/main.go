@@ -1,15 +1,18 @@
-// cmd/octogen-gen/main.go
 package main
 
 import (
-	"fmt"
+	"github.com/oesand/octo/internal"
 	"github.com/oesand/octo/internal/parse"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 func main() {
-	injects, errs := parse.ParseInjects()
+	log.SetFlags(0)
+	log.SetPrefix("octogen: ")
+
+	packages, errs := parse.ParseInjects()
 	if errs != nil {
 		for _, err := range errs {
 			log.Println(err)
@@ -17,5 +20,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("PkgDecls: %v \n", injects)
+	for _, pkg := range packages {
+		filePath := filepath.Join(pkg.Path, "octo_gen.go")
+
+		log.Printf("generating package %s", pkg.Path)
+
+		err := internal.GenerateFile(filePath, pkg)
+		//err := internal.Generate(os.Stdin, pkg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }

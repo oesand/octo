@@ -1,9 +1,11 @@
 package decl
 
 type PackageDecl struct {
+	Name    string
+	PkgPath string
 	Path    string
 	Imports []string
-	Funcs   []FuncDecl
+	Funcs   []*FuncDecl
 }
 
 type FuncDecl struct {

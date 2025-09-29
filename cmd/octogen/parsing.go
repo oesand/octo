@@ -13,6 +13,7 @@ type Other struct{}
 
 type Named struct {
 	Other *Other
+	Inf   []Inf
 }
 
 type Struct struct {
@@ -24,7 +25,7 @@ func (s *Struct) Do() {
 
 }
 
-func NewHelloWorld(p []Inf) *Other {
+func NewHelloWorld(p []Inf, Other *Other) *Other {
 	return &Other{}
 }
 

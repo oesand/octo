@@ -136,9 +136,9 @@ func ResolveInjections(container *Container) iter.Seq[ServiceDeclaration] {
 	}
 }
 
-// ResolveOfType returns an iterator over registered services in the container
+// ResolveAll returns an iterator over registered services in the container
 // if the service's type is assignable to T (implements interface or same type).
-func ResolveOfType[T any](container *Container) []T {
+func ResolveAll[T any](container *Container) []T {
 	injects := ResolveInjections(container)
 	var result []T
 	for decl := range injects {

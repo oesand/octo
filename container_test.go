@@ -88,25 +88,25 @@ func TestResolveInjectionsIteration(t *testing.T) {
 	}
 }
 
-func TestResolveOfTypeIteration(t *testing.T) {
+func TestResolveAllIteration(t *testing.T) {
 	c := New()
 	InjectValue(c, &MyService{})
 	InjectValue(c, &OtherService{})
 
-	sl := ResolveOfType[*MyService](c)
+	sl := ResolveAll[*MyService](c)
 
 	if c := len(sl); c != 1 {
 		t.Fatalf("expected 1 injection, got %d", c)
 	}
 }
 
-func TestResolveOfTypeIterationByInterface(t *testing.T) {
+func TestResolveAllIterationByInterface(t *testing.T) {
 	c := New()
 	InjectValue(c, &MyService{})
 	InjectValue(c, &MyService{})
 	InjectValue(c, &OtherService{})
 
-	sl := ResolveOfType[ServiceInterface](c)
+	sl := ResolveAll[ServiceInterface](c)
 
 	if c := len(sl); c != 2 {
 		t.Fatalf("expected 2 injection, got %d", c)

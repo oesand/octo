@@ -7,10 +7,11 @@ import (
 	"go/token"
 	"go/types"
 	"golang.org/x/tools/go/packages"
+	"path/filepath"
 	"strings"
 )
 
-func ParseInjects() ([]decl.PackageDecl, []error) {
+func ParseInjects() ([]*decl.PackageDecl, []error) {
 	cfg := &packages.Config{
 		Mode: packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo |
 			packages.NeedImports | packages.NeedDeps,
@@ -26,7 +27,7 @@ func ParseInjects() ([]decl.PackageDecl, []error) {
 	}
 
 	var errs []error
-	var pkgDecls []decl.PackageDecl
+	var pkgDecls []*decl.PackageDecl
 	for _, pkg := range pkgs {
 		var octogenAlias string
 		for _, f := range pkg.Syntax {
@@ -49,7 +50,7 @@ func ParseInjects() ([]decl.PackageDecl, []error) {
 		}
 
 		var imports internal.Set[string]
-		var funcs []decl.FuncDecl
+		var funcs []*decl.FuncDecl
 
 		// scan functions
 		for _, file := range pkg.Syntax {
@@ -143,7 +144,7 @@ func ParseInjects() ([]decl.PackageDecl, []error) {
 									}
 								}
 
-								var params []decl.LocaleInfo
+								var params []*decl.LocaleInfo
 								for i := 0; i < funcSig.Params().Len(); i++ {
 									prm := funcSig.Params().At(i)
 
@@ -156,14 +157,19 @@ func ParseInjects() ([]decl.PackageDecl, []error) {
 
 									imports.Add(prmLoc.Package)
 
-									params = append(params, *prmLoc)
+									params = append(params, prmLoc)
 								}
 
-								injects = append(injects, decl.InjectedFunc{
-									Package:   funcObj.Pkg().Path(),
-									Name:      funcObj.Name(),
+								funcPackage := funcObj.Pkg().Path()
+								imports.Add(funcPackage)
+
+								injects = append(injects, &decl.InjectedFunc{
+									Locale: &decl.LocaleInfo{
+										Package: funcPackage,
+										Name:    funcObj.Name(),
+									},
 									Params:    params,
-									Return:    *returnLoc,
+									Return:    returnLoc,
 									KeyOption: key,
 								})
 							}
@@ -198,7 +204,7 @@ func ParseInjects() ([]decl.PackageDecl, []error) {
 
 									imports.Add(stctLoc.Package)
 
-									var fields []decl.InjectedStructField
+									var fields []*decl.InjectedStructField
 									for i := 0; i < stct.NumFields(); i++ {
 										field := stct.Field(i)
 										if !field.Exported() {
@@ -222,16 +228,16 @@ func ParseInjects() ([]decl.PackageDecl, []error) {
 
 										imports.Add(fieldLoc.Package)
 
-										fields = append(fields, decl.InjectedStructField{
+										fields = append(fields, &decl.InjectedStructField{
 											Name:      field.Name(),
-											Locale:    *fieldLoc,
+											Locale:    fieldLoc,
 											KeyOption: keyOption,
 										})
 									}
 
-									injects = append(injects, decl.InjectedStruct{
-										Locale:    *stctLoc,
+									injects = append(injects, &decl.InjectedStruct{
 										Fields:    fields,
+										Return:    stctLoc,
 										KeyOption: key,
 									})
 								}
@@ -242,7 +248,7 @@ func ParseInjects() ([]decl.PackageDecl, []error) {
 				})
 
 				if len(injects) > 0 {
-					funcs = append(funcs, decl.FuncDecl{
+					funcs = append(funcs, &decl.FuncDecl{
 						Name:    fn.Name.Name,
 						Injects: injects,
 					})
@@ -257,7 +263,13 @@ func ParseInjects() ([]decl.PackageDecl, []error) {
 		}
 
 		if len(funcs) > 0 {
-			pkgDecls = append(pkgDecls, decl.PackageDecl{
+			pkgPath := pkg.ID
+			if imports.Contains(pkgPath) {
+				imports.Del(pkgPath)
+			}
+			pkgDecls = append(pkgDecls, &decl.PackageDecl{
+				Name:    filepath.Base(pkgPath),
+				PkgPath: pkgPath,
 				Path:    pkg.Dir,
 				Imports: imports.Values(),
 				Funcs:   funcs,

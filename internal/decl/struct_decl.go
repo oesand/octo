@@ -1,19 +1,19 @@
 package decl
 
 type InjectedStruct struct {
-	Locale LocaleInfo
-	Fields []InjectedStructField
+	Fields []*InjectedStructField
+	Return *LocaleInfo
 
 	KeyOption string
 }
 
-func (InjectedStruct) Type() InjectedDeclType {
+func (*InjectedStruct) Type() InjectedDeclType {
 	return InjectedStructType
 }
 
 type InjectedStructField struct {
 	Name   string
-	Locale LocaleInfo
+	Locale *LocaleInfo
 
 	KeyOption string
 }
