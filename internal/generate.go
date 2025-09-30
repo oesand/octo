@@ -28,24 +28,23 @@ func GenerateFile(filePath string, dcl *decl.PackageDecl) error {
 
 func Generate(w io.Writer, dcl *decl.PackageDecl) error {
 	var headBuf bytes.Buffer
-	_, err := headBuf.WriteString(generatedHeaderText + "\n\npackage " + dcl.Name + "\n")
+	_, err := headBuf.WriteString(generatedHeaderText + "\n\npackage " + dcl.Name + "\n\n")
 	if err != nil {
 		return err
 	}
 
+	headBuf.WriteString("import (\n")
+	headBuf.WriteString("\t\"github.com/oesand/octo\"\n")
 	var importAliases map[string]string
 	if len(dcl.Imports) > 0 {
 		importAliases = make(map[string]string, len(dcl.Imports))
-
-		headBuf.WriteString("import (\n")
-		headBuf.WriteString("\t\"github.com/oesand/octo\"\n")
 		for i, imp := range dcl.Imports {
 			alias := fmt.Sprintf("als%d", i+1)
 			importAliases[imp] = alias
 			headBuf.WriteString(fmt.Sprintf("\t%s \"%s\"\n", alias, imp))
 		}
-		headBuf.WriteString(")\n")
 	}
+	headBuf.WriteString(")\n")
 
 	genLocale := func(loc *decl.LocaleInfo, val bool) string {
 		res := loc.Name

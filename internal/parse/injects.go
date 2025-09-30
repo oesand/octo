@@ -11,14 +11,14 @@ import (
 	"strings"
 )
 
-func ParseInjects() ([]*decl.PackageDecl, []error) {
+func ParseInjects(dir string) ([]*decl.PackageDecl, []error) {
 	cfg := &packages.Config{
 		Mode: packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo |
 			packages.NeedImports | packages.NeedDeps,
 		BuildFlags: []string{
 			"-tags", "octogen",
 		},
-		Dir: ".", // current dir
+		Dir: dir,
 	}
 
 	pkgs, err := packages.Load(cfg, "./...")
@@ -104,19 +104,24 @@ func ParseInjects() ([]*decl.PackageDecl, []error) {
 								const injectTypeParamUnsupportedError = "call without generic support only link to function"
 
 								funcExpr := call.Args[0]
-								var funcSig *types.Signature
-								var funcObj *types.Func
-								switch t := funcExpr.(type) {
-								case *ast.Ident:
-									switch t.Obj.Decl.(type) {
-									case *ast.FuncDecl:
-										funcSig = pkg.TypesInfo.Types[funcExpr].Type.(*types.Signature)
-										funcObj = pkg.TypesInfo.ObjectOf(t).(*types.Func)
-									default:
-										errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), injectTypeParamUnsupportedError))
-										return false
-									}
-								default:
+								ident, ok := funcExpr.(*ast.Ident)
+								if !ok {
+									return false
+								}
+
+								typeInfo, ok := pkg.TypesInfo.Types[funcExpr]
+								if !ok {
+									return false
+								}
+
+								funcSig, ok := typeInfo.Type.(*types.Signature)
+								if !ok {
+									errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), injectTypeParamUnsupportedError))
+									return false
+								}
+
+								funcObj, ok := pkg.TypesInfo.ObjectOf(ident).(*types.Func)
+								if !ok {
 									errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), injectTypeParamUnsupportedError))
 									return false
 								}
@@ -267,6 +272,7 @@ func ParseInjects() ([]*decl.PackageDecl, []error) {
 			if imports.Contains(pkgPath) {
 				imports.Del(pkgPath)
 			}
+
 			pkgDecls = append(pkgDecls, &decl.PackageDecl{
 				Name:    filepath.Base(pkgPath),
 				PkgPath: pkgPath,

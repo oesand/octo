@@ -9,10 +9,10 @@ import (
 )
 
 func main() {
-	log.SetFlags(0)
-	log.SetPrefix("octogen: ")
+	log.SetFlags(log.Ldate | log.Ltime | log.Lmsgprefix)
+	log.SetPrefix("[octogen]: ")
 
-	packages, errs := parse.ParseInjects()
+	packages, errs := parse.ParseInjects(".")
 	if errs != nil {
 		for _, err := range errs {
 			log.Println(err)
