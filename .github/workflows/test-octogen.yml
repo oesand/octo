@@ -1,4 +1,4 @@
-name: Tests 🛠️
+name: Test Octogen ✏️️
 
 on:
   push:
@@ -17,5 +17,5 @@ jobs:
         with:
           go-version: 1.24.5
 
-      - name: 🛠️ Tests
+      - name: ✏️ Tests
         run: make test_octogen

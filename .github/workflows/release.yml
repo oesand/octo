@@ -49,6 +49,9 @@ jobs:
       - name: 🧹 Cleanup xxx_test.go files
         run: find . -name "*_test.go" -delete
 
+      - name: 🧹 Cleanup octogen tests
+        run: find ./internal/testdata -mindepth 1 -type d
+
       - name: 🧹 Cleanup dependencies
         run: go mod tidy
 

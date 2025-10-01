@@ -4,9 +4,9 @@
 package foo
 
 import (
-	"github.com/oesand/octo/internal/octogen_tests/NestedAnyVariants/foo/nested"
-	"github.com/oesand/octo/internal/octogen_tests/NestedAnyVariants/foo/nested/inner"
 	"github.com/oesand/octo/octogen"
+	"github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested"
+	"github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested/inner"
 )
 
 func IncludeAny() {

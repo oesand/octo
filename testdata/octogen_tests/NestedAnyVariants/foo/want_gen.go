@@ -6,8 +6,8 @@ package foo
 
 import (
 	"github.com/oesand/octo"
-	als2 "github.com/oesand/octo/internal/octogen_tests/NestedAnyVariants/foo/nested"
-	als1 "github.com/oesand/octo/internal/octogen_tests/NestedAnyVariants/foo/nested/inner"
+	als2 "github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested"
+	als1 "github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested/inner"
 )
 
 func IncludeAny(container *octo.Container) {

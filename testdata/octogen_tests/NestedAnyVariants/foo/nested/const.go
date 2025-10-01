@@ -1,6 +1,6 @@
 package nested
 
-import "github.com/oesand/octo/internal/octogen_tests/NestedAnyVariants/foo/nested/inner"
+import "github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested/inner"
 
 type Other struct {
 	Nm    *inner.Named `key:"key1"`
