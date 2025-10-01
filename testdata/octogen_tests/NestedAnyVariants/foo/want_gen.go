@@ -6,28 +6,30 @@ package foo
 
 import (
 	"github.com/oesand/octo"
-	als2 "github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested"
-	als1 "github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested/inner"
+	als1 "github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested"
+	als2 "github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested/inner"
 )
 
 func IncludeAny(container *octo.Container) {
-	octo.Inject(container, func(container *octo.Container) *als1.Struct {
-		return &als1.Struct{}
-	})
-	octo.InjectNamed(container, "key1", func(container *octo.Container) *als1.Named {
-		return &als1.Named{
-			Inf:   octo.Resolve[als1.Inf](container),
-			SlInf: octo.ResolveAll[als1.Inf](container),
-		}
-	})
-	octo.Inject(container, func(container *octo.Container) *als2.Other {
-		return &als2.Other{
-			Nm:    octo.ResolveNamed[*als1.Named](container, "key1"),
-			Inf:   octo.Resolve[als1.Inf](container),
-			SlInf: octo.ResolveAll[als1.Inf](container),
-		}
-	})
-	octo.Inject(container, func(container *octo.Container) *als2.NewestStruct {
-		return &als2.NewestStruct{}
-	})
+    octo.Inject(container, func(container *octo.Container) *als2.Struct {
+        return &als2.Struct{
+        }
+    })
+    octo.InjectNamed(container, "key1", func(container *octo.Container) *als2.Named {
+        return &als2.Named{
+            Inf:octo.Resolve[als2.Inf](container),
+            SlInf:octo.ResolveAll[als2.Inf](container),
+        }
+    })
+    octo.Inject(container, func(container *octo.Container) *als1.Other {
+        return &als1.Other{
+            Nm:octo.ResolveNamed[*als2.Named](container, "key1"),
+            Inf:octo.Resolve[als2.Inf](container),
+            SlInf:octo.ResolveAll[als2.Inf](container),
+        }
+    })
+    octo.Inject(container, func(container *octo.Container) *als1.NewestStruct {
+        return &als1.NewestStruct{
+        }
+    })
 }

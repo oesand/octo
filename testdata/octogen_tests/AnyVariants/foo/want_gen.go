@@ -9,42 +9,44 @@ import (
 )
 
 func IncludeAny(container *octo.Container) {
-	octo.Inject(container, func(container *octo.Container) *Struct {
-		return &Struct{}
-	})
-	octo.InjectNamed(container, "key1", func(container *octo.Container) *Named {
-		return &Named{
-			Oth:   octo.Resolve[*Other](container),
-			Inf:   octo.Resolve[Inf](container),
-			SlInf: octo.ResolveAll[Inf](container),
-		}
-	})
-	octo.Inject(container, func(container *octo.Container) *Other {
-		return &Other{
-			Nm:    octo.ResolveNamed[*Named](container, "key1"),
-			Inf:   octo.Resolve[Inf](container),
-			SlInf: octo.ResolveAll[Inf](container),
-		}
-	})
-	octo.Inject(container, func(container *octo.Container) *NewestStruct {
-		return &NewestStruct{}
-	})
-	octo.Inject(container, func(container *octo.Container) *NewestStruct {
-		return NewStruct(
-			octo.Resolve[Inf](container),
-			octo.ResolveAll[Inf](container),
-			octo.Resolve[*Other](container),
-			octo.Resolve[Struct](container),
-			octo.Resolve[*Named](container),
-		)
-	})
-	octo.Inject(container, func(container *octo.Container) NewestStruct {
-		return NewStct(
-			octo.Resolve[Inf](container),
-			octo.ResolveAll[Inf](container),
-			octo.Resolve[Other](container),
-			octo.Resolve[*Struct](container),
-			octo.Resolve[Named](container),
-		)
-	})
+    octo.Inject(container, func(container *octo.Container) *Struct {
+        return &Struct{
+        }
+    })
+    octo.InjectNamed(container, "key1", func(container *octo.Container) *Named {
+        return &Named{
+            Oth:octo.Resolve[*Other](container),
+            Inf:octo.Resolve[Inf](container),
+            SlInf:octo.ResolveAll[Inf](container),
+        }
+    })
+    octo.Inject(container, func(container *octo.Container) *Other {
+        return &Other{
+            Nm:octo.ResolveNamed[*Named](container, "key1"),
+            Inf:octo.Resolve[Inf](container),
+            SlInf:octo.ResolveAll[Inf](container),
+        }
+    })
+    octo.Inject(container, func(container *octo.Container) *NewestStruct {
+        return &NewestStruct{
+        }
+    })
+    octo.Inject(container, func(container *octo.Container) *NewestStruct {
+        return NewStruct(
+            octo.Resolve[Inf](container),
+            octo.ResolveAll[Inf](container),
+            octo.Resolve[*Other](container),
+            octo.Resolve[Struct](container),
+            octo.Resolve[*Named](container),
+        )
+    })
+    octo.Inject(container, func(container *octo.Container) NewestStruct {
+        return NewStct(
+            octo.Resolve[Inf](container),
+            octo.ResolveAll[Inf](container),
+            octo.Resolve[Other](container),
+            octo.Resolve[*Struct](container),
+            octo.Resolve[Named](container),
+        )
+    })
 }
