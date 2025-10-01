@@ -7,6 +7,7 @@ import (
 	"github.com/oesand/octo/internal/decl"
 	"io"
 	"os"
+	"sort"
 	"text/template"
 )
 
@@ -37,8 +38,10 @@ func Generate(w io.Writer, dcl *decl.PackageDecl) error {
 	headBuf.WriteString("\t\"github.com/oesand/octo\"\n")
 	var importAliases map[string]string
 	if len(dcl.Imports) > 0 {
-		importAliases = make(map[string]string, len(dcl.Imports))
-		for i, imp := range dcl.Imports {
+		imports := dcl.Imports
+		sort.Strings(imports)
+		importAliases = make(map[string]string, len(imports))
+		for i, imp := range imports {
 			alias := fmt.Sprintf("als%d", i+1)
 			importAliases[imp] = alias
 			headBuf.WriteString(fmt.Sprintf("\t%s \"%s\"\n", alias, imp))
