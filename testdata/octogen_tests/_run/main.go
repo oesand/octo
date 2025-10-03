@@ -42,7 +42,7 @@ func main() {
 			continue
 		}
 
-		log.Printf("run test %s...\n", name)
+		log.Printf("run test '%s'...\n", name)
 
 		packages, errs := parse.ParseInjects(path)
 		if errs != nil {
