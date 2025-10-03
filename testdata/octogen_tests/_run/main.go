@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func main() {
@@ -20,8 +21,8 @@ func main() {
 	}
 
 	var failed bool
-	errf := func(format string, args ...any) {
-		log.Printf(format+"\n", args...)
+	errf := func(format string, v ...any) {
+		log.Printf(format+"\n", v...)
 		failed = true
 	}
 
@@ -44,10 +45,56 @@ func main() {
 
 		log.Printf("run test '%s'...\n", name)
 
+		errsLogsPath := filepath.Join(path, "errs.log")
+		wantErrors := isFileExists(errsLogsPath)
+
 		packages, errs := parse.ParseInjects(path)
+
+		if wantErrors {
+			if errs == nil {
+				errf("expected errors, but errors not returned")
+				continue
+			}
+
+			logsContent, err := os.ReadFile(errsLogsPath)
+			if err != nil {
+				errf("cannot read errs.log file err: %s", err)
+				continue
+			}
+
+			expectedErrors := strings.Split(string(logsContent), "\n")
+			if len(expectedErrors) != len(errs) {
+				errf("expected %d errors", len(expectedErrors))
+				for i, e := range expectedErrors {
+					log.Printf("[%d] %s \n", i+1, e)
+				}
+
+				errf("but got %d errors", len(errs))
+				for i, e := range errs {
+					log.Printf("[%d] %s \n", i+1, e)
+				}
+
+				continue
+			}
+
+			for i, expected := range expectedErrors {
+				actual := errs[i]
+				if strings.HasSuffix(actual.Error(), expected) {
+					continue
+				}
+
+				errf("mismatch error at %d line", i+1)
+				log.Printf("expected: %s \n", expected)
+				log.Printf("actual: %s \n", actual)
+			}
+
+			continue
+		}
+
 		if errs != nil {
+			errf("got unexpected %d errors while parsing", len(errs))
 			for _, err := range errs {
-				errf(err.Error())
+				log.Println(err.Error())
 			}
 		}
 
@@ -57,16 +104,18 @@ func main() {
 			for _, pkg := range packages {
 				names = append(names, pkg.Name)
 			}
-			errf("too many packages found: %v\n", names)
+			errf("too many packages found: %v", names)
 			continue
 		}
 
 		pkg := packages[0]
-
 		wantPath := filepath.Join(pkg.Path, "want_gen.go")
+		if !isFileExists(wantPath) {
+			errf("no want_gen file or expected error logs file for package '%s'", pkg.Path)
+		}
 		wantContent, err := os.ReadFile(wantPath)
 		if err != nil {
-			errf("open want gen file err: %s \n", err)
+			errf("cannot want_gen file err: %s", err)
 			continue
 		}
 
@@ -81,9 +130,9 @@ func main() {
 
 		actualContent := buf.Bytes()
 		if bytes.Equal(wantContent, actualContent) {
-			log.Printf("generated content correct \n")
+			log.Println("generated content correct")
 		} else {
-			errf("unexpected generated content\n")
+			errf("unexpected generated content")
 			fmt.Print(string(actualContent))
 		}
 	}
@@ -94,4 +143,16 @@ func main() {
 	} else {
 		log.Println("--- OK ---")
 	}
+}
+
+func isFileExists(path string) bool {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true // exists
+	}
+	if os.IsNotExist(err) {
+		return false // definitely does not exist
+	}
+	// some other error (e.g., permission denied)
+	return false
 }

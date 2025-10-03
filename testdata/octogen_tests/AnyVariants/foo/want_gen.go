@@ -49,4 +49,13 @@ func IncludeAny(container *octo.Container) {
             octo.Resolve[Named](container),
         )
     })
+    octo.InjectNamed(container, "key2", func(container *octo.Container) NewestStruct {
+        return NewStct(
+            octo.Resolve[Inf](container),
+            octo.ResolveAll[Inf](container),
+            octo.Resolve[Other](container),
+            octo.Resolve[*Struct](container),
+            octo.Resolve[Named](container),
+        )
+    })
 }

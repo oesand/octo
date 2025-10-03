@@ -32,4 +32,22 @@ func IncludeAny(container *octo.Container) {
         return &als1.NewestStruct{
         }
     })
+    octo.Inject(container, func(container *octo.Container) *als1.NewestStruct {
+        return als1.NewStruct(
+            octo.Resolve[als2.Inf](container),
+            octo.ResolveAll[als2.Inf](container),
+            octo.Resolve[*als1.Other](container),
+            octo.Resolve[als2.Struct](container),
+            octo.Resolve[*als2.Named](container),
+        )
+    })
+    octo.Inject(container, func(container *octo.Container) als1.NewestStruct {
+        return als1.NewStct(
+            octo.Resolve[als2.Inf](container),
+            octo.ResolveAll[als2.Inf](container),
+            octo.Resolve[als1.Other](container),
+            octo.Resolve[*als2.Struct](container),
+            octo.Resolve[als2.Named](container),
+        )
+    })
 }

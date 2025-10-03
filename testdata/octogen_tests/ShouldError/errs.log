@@ -1,0 +1,16 @@
+/foo/decl.go:11: function argument not passed
+/foo/decl.go:13: inject with generic parameter support only struct or pointer struct
+/foo/decl.go:14: linked function returning: unexpected type, supported only struct, pointer struct
+/foo/decl.go:15: call without generic support only link to function
+/foo/decl.go:16: call without generic support only link to function
+/foo/decl.go:17: inject with generic parameter support only struct or pointer struct
+/foo/decl.go:18: inject with generic parameter support only struct or pointer struct
+/foo/decl.go:20: call without generic support only link to function
+/foo/decl.go:21: inject with generic parameter support only struct or pointer struct
+/foo/decl.go:22: call without generic support only link to function
+/foo/decl.go:23: unexpected second argument, support only string
+/foo/decl.go:24: unexpected second argument, support only string
+/foo/decl.go:26: too many arguments
+/foo/decl.go:27: too many arguments
+/foo/decl.go:28: too many arguments
+/foo/decl.go:29: too many arguments

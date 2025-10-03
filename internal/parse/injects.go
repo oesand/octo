@@ -100,17 +100,35 @@ func ParseInjects(dir string) ([]*decl.PackageDecl, []error) {
 						if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == octogenAlias {
 							kind := sel.Sel.Name
 							// look for "octogen.Inject(...)" inside
-							if kind == "Inject" && 0 < len(call.Args) && len(call.Args) <= 2 {
+							if kind == "Inject" {
+								if len(call.Args) == 0 {
+									errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), "function argument not passed"))
+									return false
+								}
+
+								if len(call.Args) > 2 {
+									errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), "too many arguments"))
+									return false
+								}
+
 								const injectTypeParamUnsupportedError = "call without generic support only link to function"
 
 								funcExpr := call.Args[0]
-								ident, ok := funcExpr.(*ast.Ident)
-								if !ok {
+
+								var funcIdent *ast.Ident
+								switch et := funcExpr.(type) {
+								case *ast.Ident:
+									funcIdent = et
+								case *ast.SelectorExpr:
+									funcIdent = et.Sel
+								default:
+									errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), injectTypeParamUnsupportedError))
 									return false
 								}
 
 								typeInfo, ok := pkg.TypesInfo.Types[funcExpr]
 								if !ok {
+									errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), injectTypeParamUnsupportedError))
 									return false
 								}
 
@@ -120,7 +138,7 @@ func ParseInjects(dir string) ([]*decl.PackageDecl, []error) {
 									return false
 								}
 
-								funcObj, ok := pkg.TypesInfo.ObjectOf(ident).(*types.Func)
+								funcObj, ok := pkg.TypesInfo.ObjectOf(funcIdent).(*types.Func)
 								if !ok {
 									errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), injectTypeParamUnsupportedError))
 									return false
@@ -141,7 +159,7 @@ func ParseInjects(dir string) ([]*decl.PackageDecl, []error) {
 
 								var key string
 								if len(call.Args) > 1 {
-									if bl, ok := call.Args[0].(*ast.BasicLit); ok && bl.Kind == token.STRING {
+									if bl, ok := call.Args[1].(*ast.BasicLit); ok && bl.Kind == token.STRING {
 										key = bl.Value[1 : len(bl.Value)-1] // strip quotes
 									} else {
 										errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), "unexpected second argument, support only string"))
@@ -197,7 +215,7 @@ func ParseInjects(dir string) ([]*decl.PackageDecl, []error) {
 											return false
 										}
 									} else if len(call.Args) > 0 {
-										errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), "unexpected count arguments"))
+										errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), "too many arguments"))
 										return false
 									}
 

@@ -3,7 +3,10 @@
   <component name="Go" enabled="true" />
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
-      <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests" />
+      <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/AnyVariants" />
+      <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/ManyFuncs" />
+      <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/NestedAnyVariants" />
+      <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/ShouldError" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
