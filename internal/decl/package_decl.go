@@ -1,32 +1,13 @@
 package decl
 
+import (
+	"github.com/oesand/octo/internal/prim"
+)
+
 type PackageDecl struct {
 	Name    string
 	PkgPath string
 	Path    string
-	Imports []string
+	Imports prim.Set[string]
 	Funcs   []*FuncDecl
-}
-
-type FuncDecl struct {
-	Name    string
-	Injects []InjectedDecl
-}
-
-type InjectedDeclType string
-
-const (
-	InjectedStructType InjectedDeclType = "struct"
-	InjectedFuncType   InjectedDeclType = "func"
-)
-
-type InjectedDecl interface {
-	Type() InjectedDeclType
-}
-
-type LocaleInfo struct {
-	Sliced  bool
-	Ptr     bool
-	Package string
-	Name    string
 }

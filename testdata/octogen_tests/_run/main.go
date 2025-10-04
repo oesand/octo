@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+const currentModule = "github.com/oesand/octo"
+
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmsgprefix)
 	log.SetPrefix("[octogen tests]: ")
@@ -46,9 +48,9 @@ func main() {
 		log.Printf("run test '%s'...\n", name)
 
 		errsLogsPath := filepath.Join(path, "errs.log")
-		wantErrors := isFileExists(errsLogsPath)
+		wantErrors := internal.IsFileExist(errsLogsPath)
 
-		packages, errs := parse.ParseInjects(path)
+		packages, errs := parse.ParseInjects(currentModule, path)
 
 		if wantErrors {
 			if errs == nil {
@@ -110,7 +112,7 @@ func main() {
 
 		pkg := packages[0]
 		wantPath := filepath.Join(pkg.Path, "want_gen.go")
-		if !isFileExists(wantPath) {
+		if !internal.IsFileExist(wantPath) {
 			errf("no want_gen file or expected error logs file for package '%s'", pkg.Path)
 		}
 		wantContent, err := os.ReadFile(wantPath)
@@ -143,16 +145,4 @@ func main() {
 	} else {
 		log.Println("--- OK ---")
 	}
-}
-
-func isFileExists(path string) bool {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true // exists
-	}
-	if os.IsNotExist(err) {
-		return false // definitely does not exist
-	}
-	// some other error (e.g., permission denied)
-	return false
 }

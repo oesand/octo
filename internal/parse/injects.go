@@ -1,8 +1,8 @@
 package parse
 
 import (
-	"github.com/oesand/octo/internal"
 	"github.com/oesand/octo/internal/decl"
+	"github.com/oesand/octo/internal/prim"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -11,7 +11,10 @@ import (
 	"strings"
 )
 
-func ParseInjects(dir string) ([]*decl.PackageDecl, []error) {
+const octogenModule = "github.com/oesand/octo/octogen"
+const mediatrModule = "github.com/oesand/octo/mediatr"
+
+func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []error) {
 	cfg := &packages.Config{
 		Mode: packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo |
 			packages.NeedImports | packages.NeedDeps,
@@ -26,34 +29,54 @@ func ParseInjects(dir string) ([]*decl.PackageDecl, []error) {
 		return nil, []error{err}
 	}
 
-	var errs []error
-	var pkgDecls []*decl.PackageDecl
+	var requestHandlerIface *types.Interface
+	var notificationHandlerIface *types.Interface
 	for _, pkg := range pkgs {
-		var octogenAlias string
-		for _, f := range pkg.Syntax {
-			for _, im := range f.Imports {
-				path := im.Path.Value[1 : len(im.Path.Value)-1] // strip quotes
-				var alias string
-				if im.Name != nil {
-					alias = im.Name.Name
-				} else {
-					alias = path[strings.LastIndex(path, "/")+1:]
-				}
-				if path == "github.com/oesand/octo/octogen" {
-					octogenAlias = alias
+		if pkg.PkgPath == mediatrModule {
+			scope := pkg.Types.Scope()
+
+			if ifc := scope.Lookup("RequestHandler"); ifc != nil {
+				if typ, ok := ifc.Type().(*types.Interface); ok {
+					requestHandlerIface = typ
 				}
 			}
-		}
 
-		if octogenAlias == "" {
+			if requestHandlerIface != nil {
+				if ifc := scope.Lookup("NotificationHandler"); ifc != nil {
+					if typ, ok := ifc.Type().(*types.Interface); ok {
+						notificationHandlerIface = typ
+					}
+				}
+
+				if notificationHandlerIface == nil {
+					requestHandlerIface = nil
+				}
+			}
+			break
+		}
+	}
+
+	var errs []error
+	var pkgDecls []*decl.PackageDecl
+	var funcsIncludeMediatr []*decl.FuncDecl
+	for _, pkg := range pkgs {
+		pkgPath := pkg.ID
+		if !strings.HasPrefix(pkgPath, currentModule) {
 			continue
 		}
 
-		var imports internal.Set[string]
+		var imports prim.Set[string]
 		var funcs []*decl.FuncDecl
+
+		pkgDecl := &decl.PackageDecl{
+			Name:    filepath.Base(pkgPath),
+			PkgPath: pkgPath,
+			Path:    pkg.Dir,
+		}
 
 		// scan functions
 		for _, file := range pkg.Syntax {
+			// check if in file has `+build octogen` or 'go:build octogen' flag
 			var hasBuildFlag bool
 			for _, commentGroup := range file.Comments {
 				for _, c := range commentGroup.List {
@@ -75,6 +98,27 @@ func ParseInjects(dir string) ([]*decl.PackageDecl, []error) {
 				continue
 			}
 
+			// scan imports for find alias for module octogen for generation shortcuts
+			var octogenAlias string
+			for _, im := range file.Imports {
+				path := im.Path.Value[1 : len(im.Path.Value)-1] // strip quotes
+				var alias string
+				if im.Name != nil {
+					alias = im.Name.Name
+				} else {
+					alias = path[strings.LastIndex(path, "/")+1:]
+				}
+				if path == octogenModule {
+					octogenAlias = alias
+				}
+			}
+
+			if octogenAlias == "" {
+				continue
+			}
+
+			// scan files with declarative functions for generate
+			var includeMediatr bool
 			ast.Inspect(file, func(n ast.Node) bool {
 				if err != nil {
 					return false
@@ -95,19 +139,19 @@ func ParseInjects(dir string) ([]*decl.PackageDecl, []error) {
 						return true
 					}
 
-					// look for "octogen.Inject(func...)"
+					// look for "octogen... funcs"
 					if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
 						if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == octogenAlias {
-							kind := sel.Sel.Name
+							switch sel.Sel.Name {
 							// look for "octogen.Inject(...)" inside
-							if kind == "Inject" {
+							case "Inject":
 								if len(call.Args) == 0 {
 									errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), "function argument not passed"))
 									return false
 								}
 
 								if len(call.Args) > 2 {
-									errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), "too many arguments"))
+									errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), "too many arguments, maximum two arguments"))
 									return false
 								}
 
@@ -195,6 +239,19 @@ func ParseInjects(dir string) ([]*decl.PackageDecl, []error) {
 									Return:    returnLoc,
 									KeyOption: key,
 								})
+
+							case "ScanForMediatr":
+								if len(call.Args) != 0 {
+									errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), "too many arguments, expect no arguments"))
+									return false
+								}
+
+								if includeMediatr {
+									errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), "ScanForMediatr already defined in this function"))
+									return false
+								}
+
+								includeMediatr = true
 							}
 						}
 					}
@@ -215,7 +272,7 @@ func ParseInjects(dir string) ([]*decl.PackageDecl, []error) {
 											return false
 										}
 									} else if len(call.Args) > 0 {
-										errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), "too many arguments"))
+										errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), "too many arguments, maximum one argument"))
 										return false
 									}
 
@@ -271,10 +328,16 @@ func ParseInjects(dir string) ([]*decl.PackageDecl, []error) {
 				})
 
 				if len(injects) > 0 {
-					funcs = append(funcs, &decl.FuncDecl{
+					funcDecl := &decl.FuncDecl{
+						Pkg:     pkgDecl,
 						Name:    fn.Name.Name,
 						Injects: injects,
-					})
+					}
+
+					funcs = append(funcs, funcDecl)
+					if includeMediatr {
+						funcsIncludeMediatr = append(funcsIncludeMediatr, funcDecl)
+					}
 				}
 
 				return true
@@ -286,18 +349,14 @@ func ParseInjects(dir string) ([]*decl.PackageDecl, []error) {
 		}
 
 		if len(funcs) > 0 {
-			pkgPath := pkg.ID
-			if imports.Contains(pkgPath) {
-				imports.Del(pkgPath)
+			if imports.Has(pkgDecl.PkgPath) {
+				imports.Del(pkgDecl.PkgPath)
 			}
 
-			pkgDecls = append(pkgDecls, &decl.PackageDecl{
-				Name:    filepath.Base(pkgPath),
-				PkgPath: pkgPath,
-				Path:    pkg.Dir,
-				Imports: imports.Values(),
-				Funcs:   funcs,
-			})
+			pkgDecl.Imports = imports
+			pkgDecl.Funcs = funcs
+
+			pkgDecls = append(pkgDecls, pkgDecl)
 		}
 	}
 

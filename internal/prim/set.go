@@ -1,4 +1,4 @@
-package internal
+package prim
 
 type Set[K comparable] map[K]struct{}
 
@@ -24,7 +24,7 @@ func (m *Set[K]) Del(keys ...K) {
 	}
 }
 
-func (m *Set[K]) Contains(key K) bool {
+func (m *Set[K]) Has(key K) bool {
 	if *m == nil {
 		return false
 	}

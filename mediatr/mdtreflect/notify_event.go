@@ -3,7 +3,7 @@ package mdtreflect
 import (
 	"context"
 	"github.com/oesand/octo"
-	"github.com/oesand/octo/internal"
+	"github.com/oesand/octo/internal/prim"
 	"iter"
 	"reflect"
 )
@@ -12,7 +12,7 @@ func notificationEventTypes(container *octo.Container) iter.Seq[reflect.Type] {
 	ctxType := reflect.TypeFor[context.Context]()
 
 	return func(yield func(reflect.Type) bool) {
-		var seen internal.Set[reflect.Type]
+		var seen prim.Set[reflect.Type]
 		decls := octo.ResolveInjections(container)
 		for decl := range decls {
 			dval := reflect.ValueOf(decl.Value())
@@ -28,7 +28,7 @@ func notificationEventTypes(container *octo.Container) iter.Seq[reflect.Type] {
 			}
 
 			eventType := methodType.In(1)
-			if !seen.Contains(eventType) {
+			if !seen.Has(eventType) {
 				if !yield(eventType) {
 					return
 				}

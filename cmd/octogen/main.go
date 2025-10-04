@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/oesand/octo/internal"
 	"github.com/oesand/octo/internal/parse"
+	"golang.org/x/mod/modfile"
 	"log"
 	"os"
 	"path/filepath"
@@ -12,7 +13,21 @@ func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmsgprefix)
 	log.SetPrefix("[octogen]: ")
 
-	packages, errs := parse.ParseInjects(".")
+	if !internal.IsFileExist("./go.mod") {
+		log.Fatalln("go.mod not found, must run only in workspace directory")
+	}
+
+	modData, err := os.ReadFile("go.mod")
+	if err != nil {
+		log.Fatalf("failed to read go.mod: %s", err)
+	}
+
+	currentModule := modfile.ModulePath(modData)
+	if currentModule == "" {
+		log.Fatalln("unknown module name in go.mod")
+	}
+
+	packages, errs := parse.ParseInjects(currentModule, ".")
 	if errs != nil {
 		for _, err := range errs {
 			log.Println(err)
@@ -26,7 +41,6 @@ func main() {
 		log.Printf("generating package %s", pkg.Path)
 
 		err := internal.GenerateFile(filePath, pkg)
-		//err := internal.Generate(os.Stdin, pkg)
 		if err != nil {
 			log.Fatal(err)
 		}
