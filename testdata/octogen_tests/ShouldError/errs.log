@@ -10,7 +10,7 @@
 /foo/decl.go:22: call without generic support only link to function
 /foo/decl.go:23: unexpected second argument, support only string
 /foo/decl.go:24: unexpected second argument, support only string
-/foo/decl.go:26: too many arguments
-/foo/decl.go:27: too many arguments
-/foo/decl.go:28: too many arguments
-/foo/decl.go:29: too many arguments
+/foo/decl.go:26: too many arguments, maximum one argument
+/foo/decl.go:27: too many arguments, maximum one argument
+/foo/decl.go:28: too many arguments, maximum two arguments
+/foo/decl.go:29: too many arguments, maximum two arguments
