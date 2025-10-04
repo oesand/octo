@@ -13,9 +13,90 @@ type MyService struct {
 	name string
 }
 
-func (s *MyService) Hello() string { return "hi" }
+func (s *MyService) Hello() string {
+	return "hi"
+}
 
 type OtherService struct{}
+
+func TestTryInjectValue_Struct(t *testing.T) {
+	c := New()
+
+	ok := TryInjectValue(c, &MyService{name: "struct"})
+	if !ok {
+		t.Fatalf("expected TryInjectValue to succeed for struct")
+	}
+
+	res := Resolve[*MyService](c)
+	if res == nil || res.name != "struct" {
+		t.Fatalf("expected resolved struct 'struct', got %#v", res)
+	}
+}
+
+func TestTryInjectValue_DuplicateStruct(t *testing.T) {
+	c := New()
+
+	_ = TryInjectValue(c, &MyService{name: "first"})
+	ok := TryInjectValue(c, &MyService{name: "second"})
+	if ok {
+		t.Fatalf("expected duplicate inject to fail")
+	}
+
+	res := Resolve[*MyService](c)
+	if res.name != "first" {
+		t.Fatalf("expected first value, got %q", res.name)
+	}
+}
+
+func TestTryInjectValue_Interface(t *testing.T) {
+	c := New()
+
+	ok := TryInjectValue[ServiceInterface](c, &MyService{name: "iface"})
+	if !ok {
+		t.Fatalf("expected TryInjectValue to succeed for interface")
+	}
+
+	res := Resolve[ServiceInterface](c)
+	if res == nil || res.Hello() != "hi" {
+		t.Fatalf("expected resolved interface with Hello=hi, got %#v", res)
+	}
+}
+
+func TestTryInject_InterfaceProvider(t *testing.T) {
+	c := New()
+
+	ok := TryInject(c, func(c *Container) ServiceInterface {
+		return &MyService{name: "provider"}
+	})
+	if !ok {
+		t.Fatalf("expected TryInject with interface provider to succeed")
+	}
+
+	res := Resolve[ServiceInterface](c)
+	if res == nil || res.Hello() != "hi" {
+		t.Fatalf("expected provider Hello=hi, got %#v", res)
+	}
+}
+
+func TestTryInject_InterfaceDuplicate(t *testing.T) {
+	c := New()
+
+	_ = TryInject(c, func(c *Container) ServiceInterface {
+		return &MyService{name: "first"}
+	})
+
+	ok := TryInject(c, func(c *Container) ServiceInterface {
+		return &MyService{name: "second"}
+	})
+	if ok {
+		t.Fatalf("expected duplicate interface inject to fail")
+	}
+
+	res := Resolve[ServiceInterface](c)
+	if res.Hello() != "hi" {
+		t.Fatalf("expected first provider Hello=hi, got %q", res.Hello())
+	}
+}
 
 // Test direct type
 func TestInjectValueAndResolve(t *testing.T) {
