@@ -56,11 +56,13 @@ func (c *Container) resolve(typ reflect.Type, name string) ServiceDeclaration {
 
 // TryInjectValue registers a concrete value into the container if not registered.
 func TryInjectValue[T any](container *Container, value T) bool {
+	typ := reflect.TypeFor[T]()
+	ensureCanInjectType(typ)
+
 	container = containerOrDefault(container)
 	container.mu.Lock()
 	defer container.mu.Unlock()
 
-	typ := reflect.TypeFor[T]()
 	if container.resolve(typ, "") != nil {
 		return false
 	}
@@ -76,20 +78,25 @@ func InjectValue[T any](container *Container, value T) {
 
 // InjectNamedValue registers a concrete value with a name for named resolution.
 func InjectNamedValue[T any](container *Container, name string, value T) {
+	typ := reflect.TypeFor[T]()
+	ensureCanInjectType(typ)
+
 	container = containerOrDefault(container)
 	container.mu.Lock()
 	defer container.mu.Unlock()
 
-	container.addValue(reflect.TypeFor[T](), name, value)
+	container.addValue(typ, name, value)
 }
 
 // TryInject registers a provider function to lazily resolve a type if not registered.
 func TryInject[T any](container *Container, provider Provider[T]) bool {
+	typ := reflect.TypeFor[T]()
+	ensureCanInjectType(typ)
+
 	container = containerOrDefault(container)
 	container.mu.Lock()
 	defer container.mu.Unlock()
 
-	typ := reflect.TypeFor[T]()
 	if container.resolve(typ, "") != nil {
 		return false
 	}
@@ -107,11 +114,14 @@ func Inject[T any](container *Container, provider Provider[T]) {
 
 // InjectNamed registers a named provider function to lazily resolve a type.
 func InjectNamed[T any](container *Container, name string, provider Provider[T]) {
+	typ := reflect.TypeFor[T]()
+	ensureCanInjectType(typ)
+
 	container = containerOrDefault(container)
 	container.mu.Lock()
 	defer container.mu.Unlock()
 
-	container.addProvider(reflect.TypeFor[T](), name, func() any {
+	container.addProvider(typ, name, func() any {
 		return provider(container)
 	})
 }
@@ -141,11 +151,17 @@ func TryResolveNamed[T any](container *Container, name string) T {
 }
 
 func resolve[T any](container *Container, name string, required bool) T {
+	typ := reflect.TypeFor[T]()
+
+	if typ.AssignableTo(containerPtrType) {
+		var val any = container
+		return val.(T)
+	}
+
 	container = containerOrDefault(container)
 	container.mu.RLock()
 	defer container.mu.RUnlock()
 
-	typ := reflect.TypeFor[T]()
 	decl := container.resolve(typ, name)
 
 	if required && decl == nil {
@@ -182,8 +198,9 @@ func ResolveInjections(container *Container) iter.Seq[ServiceDeclaration] {
 func ResolveAll[T any](container *Container) []T {
 	injects := ResolveInjections(container)
 	var result []T
+	typ := reflect.TypeFor[T]()
 	for decl := range injects {
-		if DeclOfType[T](decl) {
+		if decl.Type().AssignableTo(typ) {
 			result = append(result, decl.Value().(T))
 		}
 	}

@@ -306,6 +306,22 @@ func TestInjectProviderAndResolveByInterface(t *testing.T) {
 	}
 }
 
+func TestResolveContainer(t *testing.T) {
+	c := New()
+	res := Resolve[*Container](c)
+	if res != c {
+		t.Fatal("expected container not returned")
+	}
+}
+
+func TestTryResolveContainer(t *testing.T) {
+	c := New()
+	res := TryResolve[*Container](c)
+	if res != c {
+		t.Fatal("expected container not returned")
+	}
+}
+
 func TestTryResolveReturnsZeroValueByInterface(t *testing.T) {
 	c := New()
 	res := TryResolve[ServiceInterface](c)
@@ -407,4 +423,36 @@ func TestResolveDoesNotPanicIfOptionalNotFoundByInterface(t *testing.T) {
 	if res != nil {
 		t.Fatal("expected nil for TryResolve on missing service")
 	}
+}
+
+func TestPanicWhenInjectContainer(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			if err, ok := r.(string); !ok || err != "cannot inject Container" {
+				t.Fatalf("got unexpected error message: %s \n", err)
+			}
+		} else {
+			t.Fatal("expected a panic")
+		}
+	}()
+
+	c := New()
+	Inject(c, func(c *Container) *Container {
+		return c
+	})
+}
+
+func TestPanicWhenInjectValueContainer(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			if err, ok := r.(string); !ok || err != "cannot inject Container" {
+				t.Fatalf("got unexpected error message: %s \n", err)
+			}
+		} else {
+			t.Fatal("expected a panic")
+		}
+	}()
+
+	c := New()
+	InjectValue(c, c)
 }
