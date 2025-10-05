@@ -28,3 +28,12 @@ func IncludeAny() {
 	octogen.Inject(NewStruct, "key1", "key2")
 	octogen.Inject(NewStruct, "key1", 1)
 }
+
+func IncludeWithGenerics[T any]() {
+}
+
+func IncludeWithArguments(arg0 string) {
+}
+
+func IncludeWithReturn() string {
+}

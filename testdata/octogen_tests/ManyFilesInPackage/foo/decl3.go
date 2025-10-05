@@ -1,4 +1,3 @@
-//go:build octogen
 // +build octogen
 
 package foo

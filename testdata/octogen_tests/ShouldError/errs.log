@@ -14,3 +14,6 @@
 /foo/decl.go:27: too many arguments, maximum one argument
 /foo/decl.go:28: too many arguments, maximum two arguments
 /foo/decl.go:29: too many arguments, maximum two arguments
+/foo/decl.go:32: has generic arguments in declaration function, expect no generics
+/foo/decl.go:35: has arguments in declaration function, expect no arguments
+/foo/decl.go:38: has returns in declaration function, expect no returns

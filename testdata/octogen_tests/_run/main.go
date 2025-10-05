@@ -79,15 +79,22 @@ func main() {
 				continue
 			}
 
+			var testFailed bool
+
 			for i, expected := range expectedErrors {
 				actual := errs[i]
 				if strings.HasSuffix(actual.Error(), expected) {
 					continue
 				}
 
+				testFailed = true
 				errf("mismatch error at %d line", i+1)
 				log.Printf("expected: %s \n", expected)
 				log.Printf("actual: %s \n", actual)
+			}
+
+			if !testFailed {
+				log.Println("test passed")
 			}
 
 			continue

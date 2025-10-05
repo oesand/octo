@@ -95,6 +95,20 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []erro
 			}
 
 			if !hasBuildFlag {
+				//filename := pkg.Fset.Position(file.Pos()).Filename
+				//fmt.Printf("Scanning %s\n", filename)
+				//ast.Inspect(file, func(n ast.Node) bool {
+				//	if ident, ok := n.(*ast.Ident); ok {
+				//		if obj := pkg.TypesInfo.Defs[ident]; obj != nil {
+				//			fmt.Printf("\tdefined: %s (%T) at %s\n",
+				//				obj.Name(),
+				//				obj.Type(),
+				//				pkg.Fset.Position(ident.Pos()))
+				//		}
+				//	}
+				//	return true
+				//})
+
 				continue
 			}
 
@@ -127,6 +141,21 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []erro
 				fn, ok := n.(*ast.FuncDecl)
 				if !ok {
 					return true
+				}
+
+				if fn.Type.TypeParams.NumFields() > 0 {
+					errs = append(errs, locatedErr(pkg.Fset, fn.Pos(), "has generic arguments in declaration function, expect no generics"))
+					return false
+				}
+
+				if fn.Type.Params.NumFields() > 0 {
+					errs = append(errs, locatedErr(pkg.Fset, fn.Pos(), "has arguments in declaration function, expect no arguments"))
+					return false
+				}
+
+				if fn.Type.Results.NumFields() > 0 {
+					errs = append(errs, locatedErr(pkg.Fset, fn.Pos(), "has returns in declaration function, expect no returns"))
+					return false
 				}
 
 				var injects []decl.InjectedDecl
