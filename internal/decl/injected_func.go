@@ -5,6 +5,7 @@ type InjectedFunc struct {
 	Params []*LocaleInfo
 	Return *LocaleInfo
 
+	Optional  bool
 	KeyOption string
 }
 

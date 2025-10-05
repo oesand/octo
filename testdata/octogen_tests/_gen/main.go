@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-const currentModule = "github.com/oesand/octo"
+const currentModule = "github.com/oesand/octo/testdata"
 
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmsgprefix)
@@ -70,7 +70,14 @@ func main() {
 		log.Fatalf("error fail to get abs: %s", err.Error())
 	}
 
-	packages, errs := parse.ParseInjects(currentModule, path)
+	packages, warns, errs := parse.ParseInjects(currentModule, path)
+
+	if warns != nil {
+		for _, warn := range warns {
+			log.Println(warn)
+		}
+	}
+
 	if errs != nil {
 		for _, err := range errs {
 			log.Println(err)

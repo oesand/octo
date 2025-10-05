@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const currentModule = "github.com/oesand/octo"
+const currentModule = "github.com/oesand/octo/testdata"
 
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmsgprefix)
@@ -24,7 +24,7 @@ func main() {
 
 	var failed bool
 	errf := func(format string, v ...any) {
-		log.Printf(format+"\n", v...)
+		log.Printf("error: "+format+"\n", v...)
 		failed = true
 	}
 
@@ -50,7 +50,14 @@ func main() {
 		errsLogsPath := filepath.Join(path, "errs.log")
 		wantErrors := internal.IsFileExist(errsLogsPath)
 
-		packages, errs := parse.ParseInjects(currentModule, path)
+		// TODO: Fix warns check
+		packages, warns, errs := parse.ParseInjects(currentModule, path)
+
+		if warns != nil {
+			for _, warn := range warns {
+				log.Println(warn)
+			}
+		}
 
 		if wantErrors {
 			if errs == nil {
@@ -107,6 +114,11 @@ func main() {
 			}
 		}
 
+		if len(packages) == 0 {
+			errf("no packages found!")
+			continue
+		}
+
 		if len(packages) != 1 {
 			failed = true
 			var names []string
@@ -118,11 +130,11 @@ func main() {
 		}
 
 		pkg := packages[0]
-		wantPath := filepath.Join(pkg.Path, "want_gen.go")
-		if !internal.IsFileExist(wantPath) {
+		wantGenPath := filepath.Join(pkg.Path, "want_gen.go")
+		if !internal.IsFileExist(wantGenPath) {
 			errf("no want_gen file or expected error logs file for package '%s'", pkg.Path)
 		}
-		wantContent, err := os.ReadFile(wantPath)
+		wantContent, err := os.ReadFile(wantGenPath)
 		if err != nil {
 			errf("cannot want_gen file err: %s", err)
 			continue

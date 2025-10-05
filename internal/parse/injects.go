@@ -1,6 +1,7 @@
 package parse
 
 import (
+	"fmt"
 	"github.com/oesand/octo/internal/decl"
 	"github.com/oesand/octo/internal/prim"
 	"go/ast"
@@ -12,52 +13,34 @@ import (
 )
 
 const octogenModule = "github.com/oesand/octo/octogen"
-const mediatrModule = "github.com/oesand/octo/mediatr"
 
-func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []error) {
+func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []string, []error) {
+	fileSet := token.NewFileSet()
+
 	cfg := &packages.Config{
 		Mode: packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo |
 			packages.NeedImports | packages.NeedDeps,
 		BuildFlags: []string{
 			"-tags", "octogen",
 		},
-		Dir: dir,
+		Fset: fileSet,
+		Dir:  dir,
 	}
 
 	pkgs, err := packages.Load(cfg, "./...")
 	if err != nil {
-		return nil, []error{err}
+		return nil, nil, []error{err}
 	}
 
-	var requestHandlerIface *types.Interface
-	var notificationHandlerIface *types.Interface
-	for _, pkg := range pkgs {
-		if pkg.PkgPath == mediatrModule {
-			scope := pkg.Types.Scope()
-
-			if ifc := scope.Lookup("RequestHandler"); ifc != nil {
-				if typ, ok := ifc.Type().(*types.Interface); ok {
-					requestHandlerIface = typ
-				}
-			}
-
-			if requestHandlerIface != nil {
-				if ifc := scope.Lookup("NotificationHandler"); ifc != nil {
-					if typ, ok := ifc.Type().(*types.Interface); ok {
-						notificationHandlerIface = typ
-					}
-				}
-
-				if notificationHandlerIface == nil {
-					requestHandlerIface = nil
-				}
-			}
-			break
-		}
+	if len(pkgs) == 0 {
+		return nil, nil, []error{fmt.Errorf("no packages found")}
 	}
 
+	var warns []string
 	var errs []error
 	var pkgDecls []*decl.PackageDecl
+
+	var mediatrInjects []types.Object
 	var funcsIncludeMediatr []*decl.FuncDecl
 	for _, pkg := range pkgs {
 		pkgPath := pkg.ID
@@ -95,19 +78,48 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []erro
 			}
 
 			if !hasBuildFlag {
-				//filename := pkg.Fset.Position(file.Pos()).Filename
-				//fmt.Printf("Scanning %s\n", filename)
-				//ast.Inspect(file, func(n ast.Node) bool {
-				//	if ident, ok := n.(*ast.Ident); ok {
-				//		if obj := pkg.TypesInfo.Defs[ident]; obj != nil {
-				//			fmt.Printf("\tdefined: %s (%T) at %s\n",
-				//				obj.Name(),
-				//				obj.Type(),
-				//				pkg.Fset.Position(ident.Pos()))
-				//		}
-				//	}
-				//	return true
-				//})
+				for _, obj := range file.Scope.Objects {
+					spec, ok := obj.Decl.(*ast.TypeSpec)
+					if !ok {
+						continue
+					}
+
+					typName, ok := pkg.TypesInfo.ObjectOf(spec.Name).(*types.TypeName)
+					if !ok {
+						continue
+					}
+
+					named, ok := typName.Type().(*types.Named)
+					if !ok {
+						continue
+					}
+
+					if _, ok = named.Underlying().(*types.Struct); !ok {
+						continue
+					}
+
+					// Check if struct implements the interface
+					if !implementsMediatrHandlers(named) {
+						continue
+					}
+
+					funcObj := file.Scope.Lookup("New" + obj.Name)
+					if funcObj != nil {
+						funcDecl, ok := funcObj.Decl.(*ast.FuncDecl)
+						if !ok {
+							continue
+						}
+
+						funcType, ok := pkg.TypesInfo.ObjectOf(funcDecl.Name).(*types.Func)
+						if !ok {
+							continue
+						}
+
+						mediatrInjects = append(mediatrInjects, funcType)
+					} else {
+						mediatrInjects = append(mediatrInjects, typName)
+					}
+				}
 
 				continue
 			}
@@ -132,7 +144,6 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []erro
 			}
 
 			// scan files with declarative functions for generate
-			var includeMediatr bool
 			ast.Inspect(file, func(n ast.Node) bool {
 				if err != nil {
 					return false
@@ -158,6 +169,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []erro
 					return false
 				}
 
+				var includeMediatr bool
 				var injects []decl.InjectedDecl
 				ast.Inspect(fn.Body, func(nn ast.Node) bool {
 					if err != nil {
@@ -199,21 +211,16 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []erro
 									return false
 								}
 
-								typeInfo, ok := pkg.TypesInfo.Types[funcExpr]
-								if !ok {
-									errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), injectTypeParamUnsupportedError))
-									return false
-								}
-
-								funcSig, ok := typeInfo.Type.(*types.Signature)
-								if !ok {
-									errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), injectTypeParamUnsupportedError))
-									return false
-								}
-
 								funcObj, ok := pkg.TypesInfo.ObjectOf(funcIdent).(*types.Func)
 								if !ok {
 									errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), injectTypeParamUnsupportedError))
+									return false
+								}
+
+								funcSig := funcObj.Signature()
+
+								if funcSig.TypeParams().Len() != 0 {
+									errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), "linked function has generic arguments, expect no generics"))
 									return false
 								}
 
@@ -389,5 +396,32 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []erro
 		}
 	}
 
-	return pkgDecls, errs
+	if len(errs) > 0 {
+		return nil, nil, errs
+	}
+
+	//if len(funcsIncludeMediatr) > 0 {
+	//	var extraImports prim.Set[string]
+	//	var parsedInjects []decl.InjectedDecl
+	//	for _, obj := range mediatrInjects {
+	//		switch ot := obj.(type) {
+	//		case *types.TypeName:
+	//			structTyp := ot.Type().Underlying().(*types.Struct)
+	//
+	//		case *types.Func:
+	//			funcSig := ot.Signature()
+	//		default:
+	//			warns = append(warns, locatedMsg(fileSet, obj.Pos(), "found unexpected type implements mediatr handler"))
+	//		}
+	//	}
+	//
+	//	if len(parsedInjects) > 0 {
+	//		for _, decl := range funcsIncludeMediatr {
+	//			decl.Pkg.Imports.CopyFrom(extraImports)
+	//			decl.Injects = append(decl.Injects, parsedInjects...)
+	//		}
+	//	}
+	//}
+
+	return pkgDecls, warns, errs
 }

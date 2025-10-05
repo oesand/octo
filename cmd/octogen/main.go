@@ -27,7 +27,14 @@ func main() {
 		log.Fatalln("unknown module name in go.mod")
 	}
 
-	packages, errs := parse.ParseInjects(currentModule, ".")
+	packages, warns, errs := parse.ParseInjects(currentModule, ".")
+
+	if warns != nil {
+		for _, warn := range warns {
+			log.Println(warn)
+		}
+	}
+
 	if errs != nil {
 		for _, err := range errs {
 			log.Println(err)

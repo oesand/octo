@@ -21,3 +21,6 @@ func FuncInvalidParam(num int) NormalStruct {
 	return &NormalStruct{}
 }
 
+func NewGeneric[T any]() *NormalStruct {
+	return &NormalStruct{}
+}

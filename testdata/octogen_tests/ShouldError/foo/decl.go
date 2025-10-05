@@ -12,6 +12,7 @@ func IncludeAny() {
 
 	octogen.Inject[Inf]()
 	octogen.Inject(NewInf)
+	octogen.Inject(NewGeneric)
 	octogen.Inject(NormalStruct)
 	octogen.Inject(NormalStruct{})
 	octogen.Inject[NewStruct]()

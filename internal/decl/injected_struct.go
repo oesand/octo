@@ -4,6 +4,7 @@ type InjectedStruct struct {
 	Fields []*InjectedStructField
 	Return *LocaleInfo
 
+	Optional  bool
 	KeyOption string
 }
 
