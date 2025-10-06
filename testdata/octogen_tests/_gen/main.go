@@ -85,6 +85,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	if len(packages) == 0 {
+		log.Fatalln("no packages found!")
+	}
+
 	if len(packages) != 1 {
 		var pkgNames []string
 		for _, pkg := range packages {

@@ -28,6 +28,8 @@ func IncludeAny() {
 	octogen.Inject[NormalStruct]("key1", 1)
 	octogen.Inject(NewStruct, "key1", "key2")
 	octogen.Inject(NewStruct, "key1", 1)
+	octogen.Inject[GeneticStruct]()
+	octogen.Inject[GeneticStruct[string]]()
 }
 
 func IncludeWithGenerics[T any]() {

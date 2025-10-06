@@ -19,6 +19,10 @@ func parseStructLocale(typ types.Type) (*types.Struct, *decl.LocaleInfo, error) 
 		return nil, nil, errors.New(unexpectedTypeErr)
 	}
 
+	if named.TypeParams().Len() > 0 {
+		return nil, nil, errors.New("types with generics not supported")
+	}
+
 	stct, ok := named.Underlying().(*types.Struct)
 	if !ok {
 		return nil, nil, errors.New(unexpectedTypeErr)

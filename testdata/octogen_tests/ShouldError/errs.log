@@ -15,6 +15,8 @@
 /foo/decl.go:28: too many arguments, maximum one argument
 /foo/decl.go:29: too many arguments, maximum two arguments
 /foo/decl.go:30: too many arguments, maximum two arguments
-/foo/decl.go:33: has generic arguments in declaration function, expect no generics
-/foo/decl.go:36: has arguments in declaration function, expect no arguments
-/foo/decl.go:39: has returns in declaration function, expect no returns
+/foo/decl.go:31: inject with generic parameter support only struct or pointer struct
+/foo/decl.go:32: inject with generic parameter support only struct or pointer struct
+/foo/decl.go:35: has generic arguments in declaration function, expect no generics
+/foo/decl.go:38: has arguments in declaration function, expect no arguments
+/foo/decl.go:41: has returns in declaration function, expect no returns

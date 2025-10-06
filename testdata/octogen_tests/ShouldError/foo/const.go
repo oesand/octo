@@ -4,6 +4,8 @@ type Inf interface{}
 
 type NormalStruct struct{}
 
+type GeneticStruct[T any] struct{}
+
 type StructWithInvalidField struct{
 	Num int
 	Str string

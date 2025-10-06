@@ -36,7 +36,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 		return nil, nil, []error{fmt.Errorf("no packages found")}
 	}
 
-	var warns []string
+	var mediatrWarns []string
 	var errs []error
 	var pkgDecls []*decl.PackageDecl
 
@@ -94,7 +94,8 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 						continue
 					}
 
-					if _, ok = named.Underlying().(*types.Struct); !ok {
+					stctTyp, ok := named.Underlying().(*types.Struct)
+					if !ok {
 						continue
 					}
 
@@ -103,15 +104,55 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 						continue
 					}
 
+					if named.TypeParams().Len() > 0 {
+						mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, obj.Pos(), "found struct that implements mediatr but was skipped because generics not supported"))
+						continue
+					}
+
 					funcObj := file.Scope.Lookup("New" + obj.Name)
 					if funcObj != nil {
 						funcDecl, ok := funcObj.Decl.(*ast.FuncDecl)
 						if !ok {
+							mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, funcObj.Pos(), "found New... declaration for struct, that implements mediatr but was skipped because it not function"))
 							continue
 						}
 
 						funcType, ok := pkg.TypesInfo.ObjectOf(funcDecl.Name).(*types.Func)
 						if !ok {
+							mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, funcObj.Pos(), "found New... declaration for struct, that implements mediatr but was skipped because it not function"))
+							continue
+						}
+
+						funcSig := funcType.Signature()
+
+						if funcSig.TypeParams().Len() > 0 {
+							mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, funcType.Pos(), "found New... function for struct, that implements mediatr but was skipped because generics not supported"))
+							continue
+						}
+
+						if funcSig.Results().Len() != 1 {
+							mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, funcType.Pos(), "found New... function for struct, that implements mediatr but was skipped because returned invalid count results"))
+							continue
+						}
+
+						const invalidReturnedTypeText = "found New... function for struct, that implements mediatr but was skipped because returned not pointer to struct"
+
+						returnedTyp := funcSig.Results().At(0).Type()
+
+						pointer, ok := returnedTyp.(*types.Pointer)
+						if !ok {
+							mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, funcType.Pos(), invalidReturnedTypeText))
+							continue
+						}
+
+						returnedTyp, ok = pointer.Elem().(*types.Named)
+						if !ok {
+							mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, funcType.Pos(), invalidReturnedTypeText))
+							continue
+						}
+
+						if returnedTyp.Underlying() != stctTyp {
+							mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, funcType.Pos(), invalidReturnedTypeText))
 							continue
 						}
 
@@ -247,7 +288,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 									}
 								}
 
-								var params []*decl.LocaleInfo
+								var params = make([]*decl.LocaleInfo, funcSig.Params().Len())
 								for i := 0; i < funcSig.Params().Len(); i++ {
 									prm := funcSig.Params().At(i)
 
@@ -260,7 +301,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 
 									imports.Add(prmLoc.Package)
 
-									params = append(params, prmLoc)
+									params[i] = prmLoc
 								}
 
 								funcPackage := funcObj.Pkg().Path()
@@ -320,7 +361,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 
 									imports.Add(stctLoc.Package)
 
-									var fields []*decl.InjectedStructField
+									var fields = make([]*decl.InjectedStructField, stct.NumFields())
 									for i := 0; i < stct.NumFields(); i++ {
 										field := stct.Field(i)
 										if !field.Exported() {
@@ -344,11 +385,11 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 
 										imports.Add(fieldLoc.Package)
 
-										fields = append(fields, &decl.InjectedStructField{
+										fields[i] = &decl.InjectedStructField{
 											Name:      field.Name(),
 											Locale:    fieldLoc,
 											KeyOption: keyOption,
-										})
+										}
 									}
 
 									injects = append(injects, &decl.InjectedStruct{
@@ -363,7 +404,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 					return true
 				})
 
-				if len(injects) > 0 {
+				if len(injects) > 0 || includeMediatr {
 					funcDecl := &decl.FuncDecl{
 						Pkg:     pkgDecl,
 						Name:    fn.Name.Name,
@@ -400,28 +441,125 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 		return nil, nil, errs
 	}
 
-	//if len(funcsIncludeMediatr) > 0 {
-	//	var extraImports prim.Set[string]
-	//	var parsedInjects []decl.InjectedDecl
-	//	for _, obj := range mediatrInjects {
-	//		switch ot := obj.(type) {
-	//		case *types.TypeName:
-	//			structTyp := ot.Type().Underlying().(*types.Struct)
-	//
-	//		case *types.Func:
-	//			funcSig := ot.Signature()
-	//		default:
-	//			warns = append(warns, locatedMsg(fileSet, obj.Pos(), "found unexpected type implements mediatr handler"))
-	//		}
-	//	}
-	//
-	//	if len(parsedInjects) > 0 {
-	//		for _, decl := range funcsIncludeMediatr {
-	//			decl.Pkg.Imports.CopyFrom(extraImports)
-	//			decl.Injects = append(decl.Injects, parsedInjects...)
-	//		}
-	//	}
-	//}
+	if len(funcsIncludeMediatr) > 0 {
+		var extraImports prim.Set[string]
+		var parsedInjects []decl.InjectedDecl
+		for _, obj := range mediatrInjects {
+			switch ot := obj.(type) {
+			case *types.TypeName:
+				var stctImports prim.Set[string]
+				stctTyp := ot.Type().Underlying().(*types.Struct)
 
-	return pkgDecls, warns, errs
+				var failed bool
+				var fields []*decl.InjectedStructField
+				for i := 0; i < stctTyp.NumFields(); i++ {
+					field := stctTyp.Field(i)
+					if !field.Exported() {
+						continue
+					}
+
+					fieldTags := stctTyp.Tag(i)
+					var keyOption string
+					if idx := strings.Index(fieldTags, `key:"`); idx >= 0 {
+						rest := fieldTags[idx+5:]
+						if end := strings.Index(rest, `"`); end > 0 {
+							keyOption = rest[:end]
+						}
+					}
+
+					fieldLoc, err := parseFieldLocale(field.Type())
+					if err != nil {
+						errs = append(errs, locatedErr(fileSet, field.Pos(), "struct field (%s [%d]): %s", field.Name(), i+1, err))
+						failed = true
+						break
+					}
+
+					stctImports.Add(fieldLoc.Package)
+
+					fields = append(fields, &decl.InjectedStructField{
+						Name:      field.Name(),
+						Locale:    fieldLoc,
+						KeyOption: keyOption,
+					})
+				}
+
+				if failed {
+					continue
+				}
+
+				stctPath := ot.Pkg().Path()
+				stctImports.Add(stctPath)
+
+				extraImports.CopyFrom(stctImports)
+				parsedInjects = append(parsedInjects, &decl.InjectedStruct{
+					Fields: fields,
+					Return: &decl.LocaleInfo{
+						Ptr:     true,
+						Name:    ot.Name(),
+						Package: stctPath,
+					},
+					Optional: true,
+				})
+
+			case *types.Func:
+				var funcImports prim.Set[string]
+				funcSig := ot.Signature()
+
+				_, returnLoc, err := parseStructLocale(funcSig.Results().At(0).Type())
+				if err != nil {
+					mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, ot.Pos(), "function returning: %s", err))
+					continue
+				}
+
+				var failed bool
+				var params = make([]*decl.LocaleInfo, funcSig.Params().Len())
+				for i := 0; i < funcSig.Params().Len(); i++ {
+					prm := funcSig.Params().At(i)
+
+					var prmLoc *decl.LocaleInfo
+					prmLoc, err = parseFieldLocale(prm.Type())
+					if err != nil {
+						mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, prm.Pos(), "function param (%s [%d]): %s", prm.Name(), i+1, err))
+						failed = true
+						break
+					}
+
+					funcImports.Add(prmLoc.Package)
+					params[i] = prmLoc
+				}
+
+				if failed {
+					continue
+				}
+
+				funcPackage := ot.Pkg().Path()
+				funcImports.Add(funcPackage)
+
+				extraImports.CopyFrom(funcImports)
+				parsedInjects = append(parsedInjects, &decl.InjectedFunc{
+					Locale: &decl.LocaleInfo{
+						Package: funcPackage,
+						Name:    ot.Name(),
+					},
+					Params:   params,
+					Return:   returnLoc,
+					Optional: true,
+				})
+
+			default:
+				mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, obj.Pos(), "found unexpected type implements mediatr handler"))
+			}
+		}
+
+		if len(parsedInjects) > 0 {
+			for _, funcDecl := range funcsIncludeMediatr {
+				funcDecl.Pkg.Imports.CopyFrom(extraImports)
+				funcDecl.Injects = append(funcDecl.Injects, parsedInjects...)
+			}
+		}
+
+		return pkgDecls, mediatrWarns, errs
+	}
+
+	return pkgDecls, nil, errs
 }

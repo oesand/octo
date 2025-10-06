@@ -1,7 +1,7 @@
 {{- range $func := .Funcs }}
 func {{ $func.Name }}(container *octo.Container) {
 {{- range $decl := $func.Injects }}
-    octo.{{- if $decl.KeyOption -}}InjectNamed{{- else -}}Inject{{- end -}}
+    octo.{{- if $decl.Optional -}}TryInject{{- else if $decl.KeyOption -}}InjectNamed{{- else -}}Inject{{- end -}}
         (container, {{ if $decl.KeyOption -}}"{{ $decl.KeyOption }}", {{ end -}}func(container *octo.Container) {{ locs $decl.Return }} {
     {{- if eq $decl.Type "func" }}
         return {{ locs $decl.Locale }}(
