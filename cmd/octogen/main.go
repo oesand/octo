@@ -31,7 +31,7 @@ func main() {
 
 	if warns != nil {
 		for _, warn := range warns {
-			log.Println(warn)
+			log.Println("[WARN]:", warn)
 		}
 	}
 
@@ -45,11 +45,13 @@ func main() {
 	for _, pkg := range packages {
 		filePath := filepath.Join(pkg.Path, "octo_gen.go")
 
-		log.Printf("generating package %s", pkg.Path)
+		log.Printf("generating package %s \n", pkg.Path)
 
 		err := internal.GenerateFile(filePath, pkg)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
+
+	log.Println("generated successfully")
 }
