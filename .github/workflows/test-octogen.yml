@@ -1,0 +1,21 @@
+name: Test Octogen ✏️️
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: 📦 Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 1.24.5
+
+      - name: ✏️ Tests
+        run: make test_octogen

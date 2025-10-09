@@ -1,0 +1,33 @@
+{{- range $func := .Funcs }}
+func {{ $func.Name }}(container *octo.Container) {
+{{- range $decl := $func.Injects }}
+    octo.{{- if $decl.Optional -}}TryInject{{- else if $decl.KeyOption -}}InjectNamed{{- else -}}Inject{{- end -}}
+        (container, {{ if $decl.KeyOption -}}"{{ $decl.KeyOption }}", {{ end -}}func(container *octo.Container) {{ locs $decl.Return }} {
+    {{- if eq $decl.Type "func" }}
+        return {{ locs $decl.Locale }}(
+        {{- range $prm := $decl.Params -}}
+        {{- if $prm.Sliced }}
+            octo.ResolveAll[{{ locs $prm }}](container),
+        {{- else }}
+            octo.Resolve[{{ locs $prm }}](container),
+        {{- end }}
+        {{- end }}
+        )
+    {{- else if eq $decl.Type "struct" }}
+        return {{ vlocs $decl.Return }}{
+        {{- range $fld := $decl.Fields }}
+            {{ $fld.Name -}}:
+            {{- if $fld.Locale.Sliced -}}
+                octo.ResolveAll[{{ locs $fld.Locale }}](container),
+            {{- else if $fld.KeyOption -}}
+                octo.ResolveNamed[{{ locs $fld.Locale }}](container, "{{ $fld.KeyOption }}"),
+            {{- else -}}
+                octo.Resolve[{{ locs $fld.Locale }}](container),
+            {{- end -}}
+        {{ end }}
+        }
+    {{- end }}
+    })
+{{- end }}
+}
+{{ end -}}

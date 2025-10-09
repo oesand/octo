@@ -2,7 +2,14 @@
 <module type="WEB_MODULE" version="4">
   <component name="Go" enabled="true" />
   <component name="NewModuleRootManager">
-    <content url="file://$MODULE_DIR$" />
+    <content url="file://$MODULE_DIR$">
+      <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/InjectAnyVariants" />
+      <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/InjectErrors" />
+      <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/ManyFilesInPackage" />
+      <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/ManyFuncs" />
+      <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/MediatrScan" />
+      <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/NestedAnyVariants" />
+    </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
