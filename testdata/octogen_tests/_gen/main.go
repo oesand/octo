@@ -73,6 +73,7 @@ func main() {
 	packages, warns, errs := parse.ParseInjects(currentModule, path)
 
 	if warns != nil {
+		sort.Strings(warns)
 		for _, warn := range warns {
 			log.Println(warn)
 		}

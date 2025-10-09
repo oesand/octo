@@ -6,10 +6,10 @@ package foo
 
 import (
 	"github.com/oesand/octo"
-	als1 "github.com/oesand/octo/testdata/octogen_tests/AutoInjectMediatr/foo/notif"
-	als2 "github.com/oesand/octo/testdata/octogen_tests/AutoInjectMediatr/foo/notif_func"
-	als3 "github.com/oesand/octo/testdata/octogen_tests/AutoInjectMediatr/foo/req"
-	als4 "github.com/oesand/octo/testdata/octogen_tests/AutoInjectMediatr/foo/req_func"
+	als1 "github.com/oesand/octo/testdata/octogen_tests/MediatrScan/foo/notif"
+	als2 "github.com/oesand/octo/testdata/octogen_tests/MediatrScan/foo/notif_func"
+	als3 "github.com/oesand/octo/testdata/octogen_tests/MediatrScan/foo/req"
+	als4 "github.com/oesand/octo/testdata/octogen_tests/MediatrScan/foo/req_func"
 )
 
 func IncludeAny(container *octo.Container) {

@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -47,17 +48,71 @@ func main() {
 
 		log.Printf("run test '%s'...\n", name)
 
-		errsLogsPath := filepath.Join(path, "errs.log")
-		wantErrors := internal.IsFileExist(errsLogsPath)
-
-		// TODO: Fix warns check
 		packages, warns, errs := parse.ParseInjects(currentModule, path)
 
+		warnsLogsPath := filepath.Join(path, "warns.log")
+		wantWarns := internal.IsFileExist(warnsLogsPath)
+
+		if wantWarns {
+			if warns == nil {
+				errf("expected warns, but warns not returned")
+				continue
+			}
+
+			logsContent, err := os.ReadFile(warnsLogsPath)
+			if err != nil {
+				errf("cannot read warns.log file err: %s", err)
+				continue
+			}
+
+			sort.Strings(warns)
+
+			expectedWarns := strings.Split(string(logsContent), "\n")
+			if len(expectedWarns) != len(warns) {
+				errf("expected %d warns", len(expectedWarns))
+				for i, e := range expectedWarns {
+					log.Printf("[%d] %s \n", i+1, e)
+				}
+
+				errf("but got %d warns", len(warns))
+				for i, w := range warns {
+					log.Printf("[%d] %s \n", i+1, w)
+				}
+
+				continue
+			}
+
+			var testFailed bool
+
+			for i, expected := range expectedWarns {
+				actual := warns[i]
+				if strings.HasSuffix(actual, expected) {
+					continue
+				}
+
+				testFailed = true
+				errf("mismatch warn at %d line", i+1)
+				log.Printf("expected: %s \n", expected)
+				log.Printf("actual: %s \n", actual)
+			}
+
+			if !testFailed {
+				log.Println("test passed")
+			}
+
+			continue
+		}
+
 		if warns != nil {
+			errf("got unexpected %d warnings while parsing", len(warns))
 			for _, warn := range warns {
 				log.Println(warn)
 			}
+			continue
 		}
+
+		errsLogsPath := filepath.Join(path, "errs.log")
+		wantErrors := internal.IsFileExist(errsLogsPath)
 
 		if wantErrors {
 			if errs == nil {
@@ -112,6 +167,7 @@ func main() {
 			for _, err := range errs {
 				log.Println(err.Error())
 			}
+			continue
 		}
 
 		if len(packages) == 0 {

@@ -469,7 +469,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 
 					fieldLoc, err := parseFieldLocale(field.Type())
 					if err != nil {
-						errs = append(errs, locatedErr(fileSet, field.Pos(), "struct field (%s [%d]): %s", field.Name(), i+1, err))
+						mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, field.Pos(), "mediatr struct field (%s [%d]): %s", field.Name(), i+1, err))
 						failed = true
 						break
 					}
@@ -507,7 +507,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 
 				_, returnLoc, err := parseStructLocale(funcSig.Results().At(0).Type())
 				if err != nil {
-					mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, ot.Pos(), "function returning: %s", err))
+					mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, ot.Pos(), "mediatr function returning: %s", err))
 					continue
 				}
 
@@ -519,7 +519,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 					var prmLoc *decl.LocaleInfo
 					prmLoc, err = parseFieldLocale(prm.Type())
 					if err != nil {
-						mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, prm.Pos(), "function param (%s [%d]): %s", prm.Name(), i+1, err))
+						mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, prm.Pos(), "mediatr function param (%s [%d]): %s", prm.Name(), i+1, err))
 						failed = true
 						break
 					}

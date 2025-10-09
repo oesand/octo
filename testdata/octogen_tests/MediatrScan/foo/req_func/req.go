@@ -2,7 +2,7 @@ package req_func
 
 import (
 	"context"
-	"github.com/oesand/octo/testdata/octogen_tests/AutoInjectMediatr/foo/req"
+	"github.com/oesand/octo/testdata/octogen_tests/MediatrScan/foo/req"
 )
 
 func NewReqHandler() *ReqHandler {
