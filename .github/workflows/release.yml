@@ -70,10 +70,31 @@ jobs:
           git add .
           git commit --allow-empty -m 'bump ${{ github.ref_name }}'
 
-      - name: 📦 Build binary
+      - name: 📦 Build binaries
         run: |
           mkdir -p bin
-          go build -o bin/octogen ./cmd/octogen
+          platforms=(
+            "linux/amd64"
+            "linux/arm64"
+            "windows/amd64"
+            "windows/arm64"
+            "darwin/amd64"
+            "darwin/arm64"
+          )
+
+          for platform in "${platforms[@]}"; do
+            IFS="/" read -r GOOS GOARCH <<<"$platform"
+            output="bin/octogen-${GOOS}-${GOARCH}"
+            if [ "$GOOS" = "windows" ]; then
+              output="${output}.exe"
+            fi
+
+            echo "🛠 Building for ${GOOS}/${GOARCH}..."
+            GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 go build -o "$output" ./cmd/octogen
+          done
+
+          echo "✅ Build complete:"
+          ls -lh bin/
 
       - name: 🚀 Create GitHub Release
         env:
