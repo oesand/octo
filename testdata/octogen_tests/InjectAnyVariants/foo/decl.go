@@ -16,4 +16,6 @@ func IncludeAny() {
 	octogen.Inject(NewStruct)
 	octogen.Inject(NewStct)
 	octogen.Inject(NewStct, "key2")
+
+	octogen.Inject(NewInf)
 }
