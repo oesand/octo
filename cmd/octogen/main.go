@@ -36,7 +36,7 @@ func main() {
 	}
 
 	if filepath.Ext(*generationName) != ".go" {
-		log.Fatalf("%s is not a .go file name", *generationName)
+		log.Fatalf("'%s' is not a .go file name", *generationName)
 	}
 
 	if !internal.IsFileExist("./go.mod") {
