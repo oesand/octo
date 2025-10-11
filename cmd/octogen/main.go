@@ -25,8 +25,9 @@ func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmsgprefix)
 	log.SetPrefix("[octogen]: ")
 	flag.Usage = PrintUsage
-	startGeneration := flag.Bool("", false, "mark for run generation")
-	generationName := flag.String("", "octo_gen.go", "file name for generation")
+
+	startGeneration := flag.Bool("gen", false, "mark for run generation")
+	generationName := flag.String("name", "octo_gen.go", "file name for generation")
 	flag.Parse()
 
 	if !*startGeneration {
@@ -39,7 +40,7 @@ func main() {
 	}
 
 	if !internal.IsFileExist("./go.mod") {
-		log.Fatalln("go.mod not found, must run only in workspace directory")
+		log.Fatalln("go.mod not found, must run only in module directory")
 	}
 
 	modData, err := os.ReadFile("go.mod")
