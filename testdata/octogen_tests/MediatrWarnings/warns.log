@@ -1,7 +1,7 @@
 /foo/const.go:47: found struct that implements mediatr but was skipped because generics not supported
-/foo/const.go:52: mediatr struct field (Fld0 [1]): unexpected type, supported only struct, pointer struct and interface and slice of them
+/foo/const.go:52: mediatr struct field (Fld0 [1]): unexpected type, supported only struct, pointer struct, interface and slice of them
 /foo/const.go:58: found New... declaration for struct, that implements mediatr but was skipped because it not function
 /foo/const.go:60: found New... function for struct, that implements mediatr but was skipped because returned invalid count results
 /foo/const.go:64: found New... function for struct, that implements mediatr but was skipped because generics not supported
 /foo/const.go:68: found New... function for struct, that implements mediatr but was skipped because returned not pointer to struct
-/foo/const.go:72: mediatr function param (p0 [1]): unexpected type, supported only struct, pointer struct and interface and slice of them
+/foo/const.go:72: mediatr function param (p0 [1]): unexpected type, supported only struct, pointer struct, interface and slice of them

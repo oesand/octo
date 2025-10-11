@@ -270,7 +270,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 									return false
 								}
 
-								_, returnLoc, err := parseStructLocale(funcSig.Results().At(0).Type())
+								_, returnLoc, err := parseTypeLink(funcSig.Results().At(0).Type(), EPIface)
 								if err != nil {
 									errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), "linked function returning: %s", err))
 									return false
@@ -293,7 +293,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 									prm := funcSig.Params().At(i)
 
 									var prmLoc *decl.LocaleInfo
-									prmLoc, err = parseFieldLocale(prm.Type())
+									_, prmLoc, err = parseTypeLink(prm.Type(), EPIface|EPSlice)
 									if err != nil {
 										errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), "linked function param (%s [%d]): %s", prm.Name(), i+1, err))
 										return false
@@ -353,13 +353,14 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 										return false
 									}
 
-									stct, stctLoc, err := parseStructLocale(typ)
+									typ, stctLoc, err := parseTypeLink(typ, NoEP)
 									if err != nil {
 										errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), "inject with generic parameter support only struct or pointer struct"))
 										return false
 									}
 
 									imports.Add(stctLoc.Package)
+									stct := typ.(*types.Struct)
 
 									var fields = make([]*decl.InjectedStructField, stct.NumFields())
 									for i := 0; i < stct.NumFields(); i++ {
@@ -377,7 +378,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 											}
 										}
 
-										fieldLoc, err := parseFieldLocale(field.Type())
+										_, fieldLoc, err := parseTypeLink(field.Type(), EPIface|EPSlice)
 										if err != nil {
 											errs = append(errs, locatedErr(pkg.Fset, ident.Pos(), "linked struct field (%s [%d]): %s", field.Name(), i+1, err))
 											return false
@@ -467,7 +468,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 						}
 					}
 
-					fieldLoc, err := parseFieldLocale(field.Type())
+					_, fieldLoc, err := parseTypeLink(field.Type(), EPIface|EPSlice)
 					if err != nil {
 						mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, field.Pos(), "mediatr struct field (%s [%d]): %s", field.Name(), i+1, err))
 						failed = true
@@ -505,7 +506,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 				var funcImports prim.Set[string]
 				funcSig := ot.Signature()
 
-				_, returnLoc, err := parseStructLocale(funcSig.Results().At(0).Type())
+				_, returnLoc, err := parseTypeLink(funcSig.Results().At(0).Type(), NoEP)
 				if err != nil {
 					mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, ot.Pos(), "mediatr function returning: %s", err))
 					continue
@@ -517,7 +518,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 					prm := funcSig.Params().At(i)
 
 					var prmLoc *decl.LocaleInfo
-					prmLoc, err = parseFieldLocale(prm.Type())
+					_, prmLoc, err = parseTypeLink(prm.Type(), EPIface|EPSlice)
 					if err != nil {
 						mediatrWarns = append(mediatrWarns, locatedMsg(fileSet, prm.Pos(), "mediatr function param (%s [%d]): %s", prm.Name(), i+1, err))
 						failed = true

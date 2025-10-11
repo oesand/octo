@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"github.com/oesand/octo/internal"
 	"github.com/oesand/octo/internal/parse"
 	"golang.org/x/mod/modfile"
@@ -9,9 +11,32 @@ import (
 	"path/filepath"
 )
 
+const UsageText = "Usage of octogen: \n" +
+	"\t octogen # Help - you here ;) \n" +
+	"\t octogen -gen # Scans packages and generate Injects follows instructions \n" +
+	"\t\t ... -name <name:str> # Defines filename for instructions aggregation. Must ends with `.go` extension. Default: octo_gen.go \n" +
+	"For more information, see: \n\thttps://github.com/oesand/octo \n"
+
+func PrintUsage() {
+	fmt.Print(UsageText)
+}
+
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmsgprefix)
 	log.SetPrefix("[octogen]: ")
+	flag.Usage = PrintUsage
+	startGeneration := flag.Bool("", false, "mark for run generation")
+	generationName := flag.String("", "octo_gen.go", "file name for generation")
+	flag.Parse()
+
+	if !*startGeneration {
+		PrintUsage()
+		return
+	}
+
+	if filepath.Ext(*generationName) != ".go" {
+		log.Fatalf("%s is not a .go file name", *generationName)
+	}
 
 	if !internal.IsFileExist("./go.mod") {
 		log.Fatalln("go.mod not found, must run only in workspace directory")
@@ -42,8 +67,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	genFileName := filepath.Clean(*generationName)
+
 	for _, pkg := range packages {
-		filePath := filepath.Join(pkg.Path, "octo_gen.go")
+		filePath := filepath.Join(pkg.Path, genFileName)
 
 		log.Printf("generating package %s \n", pkg.Path)
 
@@ -53,5 +80,5 @@ func main() {
 		}
 	}
 
-	log.Println("generated successfully")
+	log.Println("generation finished")
 }

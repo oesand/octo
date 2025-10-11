@@ -7,11 +7,19 @@ import (
 	"github.com/oesand/octo/octogen"
 )
 
+func IncludeWithGenerics[T any]() {
+}
+
+func IncludeWithArguments(arg0 string) {
+}
+
+func IncludeWithReturn() string {
+}
+
 func IncludeAny() {
 	octogen.Inject() // Empty param
 
 	octogen.Inject[Inf]()
-	octogen.Inject(NewInf)
 	octogen.Inject(NewGeneric)
 	octogen.Inject(NormalStruct)
 	octogen.Inject(NormalStruct{})
@@ -20,7 +28,7 @@ func IncludeAny() {
 
 	octogen.Inject(int)
 	octogen.Inject[int]()
-	octogen.Inject(NewInf())
+	octogen.Inject(NewStruct())
 	octogen.Inject[NormalStruct](1)
 	octogen.Inject[NormalStruct](true)
 
@@ -28,15 +36,16 @@ func IncludeAny() {
 	octogen.Inject[NormalStruct]("key1", 1)
 	octogen.Inject(NewStruct, "key1", "key2")
 	octogen.Inject(NewStruct, "key1", 1)
-	octogen.Inject[GeneticStruct]()
-	octogen.Inject[GeneticStruct[string]]()
-}
+	octogen.Inject[GenericStruct]()
+	octogen.Inject[GenericStruct[string]]()
 
-func IncludeWithGenerics[T any]() {
-}
+	octogen.Inject(FuncInvalidReturn)
+	octogen.Inject(FuncInvalidReturnCount)
 
-func IncludeWithArguments(arg0 string) {
-}
-
-func IncludeWithReturn() string {
+	octogen.Inject[[]NormalStruct]()
+	octogen.Inject[[]*NormalStruct]()
+	octogen.Inject(FuncReturnPtrInf)
+	octogen.Inject(FuncReturnSliceInf)
+	octogen.Inject(FuncReturnSliceStct)
+	octogen.Inject(FuncReturnSlicePtrStct)
 }

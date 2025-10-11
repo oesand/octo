@@ -37,3 +37,9 @@ func NewStct(
 ) NewestStruct {
 	return NewestStruct{}
 }
+
+func NewInf(
+	st *Struct,
+) Inf {
+	return *Other{}
+}

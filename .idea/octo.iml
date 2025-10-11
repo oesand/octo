@@ -9,6 +9,7 @@
       <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/ManyFuncs" />
       <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/MediatrScan" />
       <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/NestedAnyVariants" />
+      <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/MediatrWarnings" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

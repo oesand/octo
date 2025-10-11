@@ -1,22 +1,29 @@
-/foo/decl.go:11: function argument not passed
-/foo/decl.go:13: inject with generic parameter support only struct or pointer struct
-/foo/decl.go:14: linked function returning: unexpected type, supported only struct, pointer struct
-/foo/decl.go:15: linked function has generic arguments, expect no generics
-/foo/decl.go:16: call without generic support only link to function
-/foo/decl.go:17: call without generic support only link to function
-/foo/decl.go:18: inject with generic parameter support only struct or pointer struct
-/foo/decl.go:19: inject with generic parameter support only struct or pointer struct
-/foo/decl.go:21: call without generic support only link to function
+/foo/decl.go:10: has generic arguments in declaration function, expect no generics
+/foo/decl.go:13: has arguments in declaration function, expect no arguments
+/foo/decl.go:16: has returns in declaration function, expect no returns
+/foo/decl.go:20: function argument not passed
 /foo/decl.go:22: inject with generic parameter support only struct or pointer struct
-/foo/decl.go:23: call without generic support only link to function
-/foo/decl.go:24: unexpected second argument, support only string
-/foo/decl.go:25: unexpected second argument, support only string
-/foo/decl.go:27: too many arguments, maximum one argument
-/foo/decl.go:28: too many arguments, maximum one argument
-/foo/decl.go:29: too many arguments, maximum two arguments
-/foo/decl.go:30: too many arguments, maximum two arguments
-/foo/decl.go:31: inject with generic parameter support only struct or pointer struct
-/foo/decl.go:32: inject with generic parameter support only struct or pointer struct
-/foo/decl.go:35: has generic arguments in declaration function, expect no generics
-/foo/decl.go:38: has arguments in declaration function, expect no arguments
-/foo/decl.go:41: has returns in declaration function, expect no returns
+/foo/decl.go:23: linked function has generic arguments, expect no generics
+/foo/decl.go:24: call without generic support only link to function
+/foo/decl.go:25: call without generic support only link to function
+/foo/decl.go:26: inject with generic parameter support only struct or pointer struct
+/foo/decl.go:27: inject with generic parameter support only struct or pointer struct
+/foo/decl.go:29: call without generic support only link to function
+/foo/decl.go:30: inject with generic parameter support only struct or pointer struct
+/foo/decl.go:31: call without generic support only link to function
+/foo/decl.go:32: unexpected second argument, support only string
+/foo/decl.go:33: unexpected second argument, support only string
+/foo/decl.go:35: too many arguments, maximum one argument
+/foo/decl.go:36: too many arguments, maximum one argument
+/foo/decl.go:37: too many arguments, maximum two arguments
+/foo/decl.go:38: too many arguments, maximum two arguments
+/foo/decl.go:39: inject with generic parameter support only struct or pointer struct
+/foo/decl.go:40: inject with generic parameter support only struct or pointer struct
+/foo/decl.go:42: linked function returning: unexpected type, supported only struct, pointer struct, interface
+/foo/decl.go:43: linked function should return only one result
+/foo/decl.go:45: inject with generic parameter support only struct or pointer struct
+/foo/decl.go:46: inject with generic parameter support only struct or pointer struct
+/foo/decl.go:47: linked function returning: unexpected type, supported only struct, pointer struct, interface
+/foo/decl.go:48: linked function returning: unexpected type, supported only struct, pointer struct, interface
+/foo/decl.go:49: linked function returning: unexpected type, supported only struct, pointer struct, interface
+/foo/decl.go:50: linked function returning: unexpected type, supported only struct, pointer struct, interface

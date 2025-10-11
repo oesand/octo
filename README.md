@@ -26,7 +26,7 @@ go get github.com/oesand/octo
 Install the **octogen** code generation tool:
 
 ```bash
-go install github.com/oesand/octo/octogen@latest
+go install github.com/oesand/octo/cmd/octogen@latest
 ```
 
 This will install the `octogen` binary into your `$GOPATH/bin` (or `$HOME/go/bin` by default).
@@ -87,7 +87,7 @@ func IncludeAll() {
 Run the generator:
 
 ```bash
-octogen generate ./...
+octogen -gen
 ```
 
 It produces a generated file:

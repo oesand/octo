@@ -4,7 +4,7 @@ type Inf interface{}
 
 type NormalStruct struct{}
 
-type GeneticStruct[T any] struct{}
+type GenericStruct[T any] struct{}
 
 type StructWithInvalidField struct{
 	Num int
@@ -15,14 +15,34 @@ func NewStruct() NormalStruct {
 	return &NormalStruct{}
 }
 
-func NewInf() Inf {
-	return &NewestStruct{}
-}
-
 func FuncInvalidParam(num int) NormalStruct {
 	return &NormalStruct{}
 }
 
 func NewGeneric[T any]() *NormalStruct {
 	return &NormalStruct{}
+}
+
+func FuncInvalidReturn() string {
+	return ""
+}
+
+func FuncInvalidReturnCount() (*NormalStruct, error) {
+	return NormalStruct{}, nil
+}
+
+func FuncReturnPtrInf() *Inf {
+	return &NormalStruct{}
+}
+
+func FuncReturnSliceInf() []Inf {
+	return &NormalStruct{}
+}
+
+func FuncReturnSliceStct() []NormalStruct {
+	return []NormalStruct{}
+}
+
+func FuncReturnSlicePtrStct() []*NormalStruct {
+	return nil
 }

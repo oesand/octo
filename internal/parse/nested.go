@@ -6,41 +6,35 @@ import (
 	"go/types"
 )
 
-func parseStructLocale(typ types.Type) (*types.Struct, *decl.LocaleInfo, error) {
-	const unexpectedTypeErr = "unexpected type, supported only struct, pointer struct"
+type ParseExtraOption int
 
-	pointer, ptr := typ.(*types.Pointer)
-	if ptr {
-		typ = pointer.Elem()
+const (
+	NoEP    ParseExtraOption = 0
+	EPSlice ParseExtraOption = 1 << iota
+	EPIface
+)
+
+func unexpectedTypeErr(options ParseExtraOption) error {
+	errText := "unexpected type, supported only struct, pointer struct"
+
+	if options&EPIface != 0 {
+		errText += ", interface"
 	}
 
-	named, ok := typ.(*types.Named)
-	if !ok {
-		return nil, nil, errors.New(unexpectedTypeErr)
+	if options&EPSlice != 0 {
+		errText += " and slice of them"
 	}
 
-	if named.TypeParams().Len() > 0 {
-		return nil, nil, errors.New("types with generics not supported")
-	}
-
-	stct, ok := named.Underlying().(*types.Struct)
-	if !ok {
-		return nil, nil, errors.New(unexpectedTypeErr)
-	}
-
-	loc := decl.LocaleInfo{
-		Ptr:     ptr,
-		Name:    named.Obj().Name(),
-		Package: named.Obj().Pkg().Path(),
-	}
-	return stct, &loc, nil
+	return errors.New(errText)
 }
 
-func parseFieldLocale(typ types.Type) (*decl.LocaleInfo, error) {
-	const unexpectedTypeErr = "unexpected type, supported only struct, pointer struct and interface and slice of them"
-
+func parseTypeLink(typ types.Type, options ParseExtraOption) (types.Type, *decl.LocaleInfo, error) {
 	sl, sliced := typ.(*types.Slice)
 	if sliced {
+		if options&EPSlice == 0 {
+			return nil, nil, unexpectedTypeErr(options)
+		}
+
 		typ = sl.Elem()
 	}
 
@@ -51,17 +45,22 @@ func parseFieldLocale(typ types.Type) (*decl.LocaleInfo, error) {
 
 	named, ok := typ.(*types.Named)
 	if !ok {
-		return nil, errors.New(unexpectedTypeErr)
+		return nil, nil, unexpectedTypeErr(options)
 	}
 
-	switch named.Underlying().(type) {
+	if named.TypeParams().Len() > 0 {
+		return nil, nil, errors.New("types with generics not supported")
+	}
+
+	typ = named.Underlying()
+	switch typ.(type) {
 	case *types.Struct:
 	case *types.Interface:
-		if ptr {
-			return nil, errors.New(unexpectedTypeErr)
+		if ptr || options&EPIface == 0 {
+			return nil, nil, unexpectedTypeErr(options)
 		}
 	default:
-		return nil, errors.New(unexpectedTypeErr)
+		return nil, nil, unexpectedTypeErr(options)
 	}
 
 	loc := decl.LocaleInfo{
@@ -70,5 +69,5 @@ func parseFieldLocale(typ types.Type) (*decl.LocaleInfo, error) {
 		Name:    named.Obj().Name(),
 		Package: named.Obj().Pkg().Path(),
 	}
-	return &loc, nil
+	return typ, &loc, nil
 }

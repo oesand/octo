@@ -58,4 +58,9 @@ func IncludeAny(container *octo.Container) {
             octo.Resolve[Named](container),
         )
     })
+    octo.Inject(container, func(container *octo.Container) Inf {
+        return NewInf(
+            octo.Resolve[*Struct](container),
+        )
+    })
 }
