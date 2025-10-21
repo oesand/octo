@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"sync"
 	"testing"
+	"time"
 )
 
 // === Test event types ===
@@ -28,11 +29,6 @@ func (h *HandlerB) Notification(ctx context.Context, e EventB) {
 	h.Called = true
 }
 
-// Wrong signature → should be ignored
-type BadHandler struct{}
-
-func (h *BadHandler) Notification(ctx context.Context) {}
-
 // Custom handler to count calls
 type CtxHandler struct {
 	mu    *sync.Mutex
@@ -51,7 +47,7 @@ func TestNotificationEventTypes_NoHandlers(t *testing.T) {
 	container := octo.New()
 	manager := InjectManager(container)
 
-	got := []reflect.Type{}
+	var got []reflect.Type
 	for ev := range notificationEventTypes(manager.container) {
 		got = append(got, ev)
 	}
@@ -121,7 +117,9 @@ func TestNotifyEvents_CallsMatchingHandler(t *testing.T) {
 
 	ctx := context.Background()
 	evVal := reflect.ValueOf(EventA{V: "x"})
-	notifyEvents(container, ctx, reflect.TypeOf(EventA{}), evVal)
+	notifyEvents(container, ctx, evVal.Type(), evVal)
+
+	time.Sleep(20 * time.Millisecond)
 
 	if !h.Called {
 		t.Fatal("expected handler to be called")
@@ -135,7 +133,9 @@ func TestNotifyEvents_SkipsWrongType(t *testing.T) {
 
 	ctx := context.Background()
 	evVal := reflect.ValueOf(EventB{N: 42})
-	notifyEvents(container, ctx, reflect.TypeOf(EventB{}), evVal)
+	notifyEvents(container, ctx, evVal.Type(), evVal)
+
+	time.Sleep(20 * time.Millisecond)
 
 	if h.Called {
 		t.Fatal("expected handler not to be called")
@@ -151,7 +151,9 @@ func TestNotifyEvents_MultipleHandlers(t *testing.T) {
 
 	ctx := context.Background()
 	evVal := reflect.ValueOf(EventA{V: "multi"})
-	notifyEvents(container, ctx, reflect.TypeOf(EventA{}), evVal)
+	notifyEvents(container, ctx, evVal.Type(), evVal)
+
+	time.Sleep(20 * time.Millisecond)
 
 	if !h1.Called || !h2.Called {
 		t.Fatal("expected both handlers called")
@@ -171,7 +173,9 @@ func TestNotifyEvents_StopsOnContextCancel(t *testing.T) {
 	cancel() // cancel immediately
 
 	evVal := reflect.ValueOf(EventA{V: "stop"})
-	notifyEvents(container, ctx, reflect.TypeOf(EventA{}), evVal)
+	notifyEvents(container, ctx, evVal.Type(), evVal)
+
+	time.Sleep(20 * time.Millisecond)
 
 	mu.Lock()
 	defer mu.Unlock()

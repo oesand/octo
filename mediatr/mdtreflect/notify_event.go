@@ -66,6 +66,6 @@ func notifyEvents(container *octo.Container, ctx context.Context, evType reflect
 			continue
 		}
 
-		method.Call([]reflect.Value{ctxValue, evVal})
+		go method.Call([]reflect.Value{ctxValue, evVal})
 	}
 }

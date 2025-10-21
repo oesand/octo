@@ -31,7 +31,7 @@ func MarshallEvent[T comparable](manager *EventManager, event T) ([]byte, error)
 
 	decl, has := manager.events[absoluteName]
 	if !has {
-		panic(fmt.Sprintf("octo: event '%s' not registered", absoluteName))
+		return nil, fmt.Errorf("octo: event '%s' not registered", absoluteName)
 	}
 
 	aliases := decl.aliases
@@ -51,8 +51,8 @@ func MarshallEvent[T comparable](manager *EventManager, event T) ([]byte, error)
 
 // UnmarshallAndPublish deserializes a wrapped event and notifies
 // all registered handlers for the event type.
-// If skipIfNF is true, missing event types are ignored.
-func UnmarshallAndPublish(manager *EventManager, ctx context.Context, buf []byte, skipIfNF bool) error {
+// If EventManager.SkipIfNotFound is true, missing event types are ignored.
+func UnmarshallAndPublish(manager *EventManager, ctx context.Context, buf []byte) error {
 	var wrapped wrappedEvent
 	err := json.Unmarshal(buf, &wrapped)
 	if err != nil {
@@ -77,9 +77,6 @@ func UnmarshallAndPublish(manager *EventManager, ctx context.Context, buf []byte
 	}
 
 	if eventType == nil {
-		if skipIfNF {
-			return nil
-		}
 		return errors.New("octo: not found event by aliases, skip")
 	}
 

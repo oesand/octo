@@ -6,6 +6,7 @@ import (
 	"github.com/oesand/octo"
 	"reflect"
 	"testing"
+	"time"
 )
 
 // --- Test events ---
@@ -82,7 +83,7 @@ func TestUnmarshallAndPublish_InvalidJSON_ReturnsError(t *testing.T) {
 	manager := &EventManager{events: make(map[string]*eventDecl)}
 	manager.autoRegister.Do(func() {})
 
-	err := UnmarshallAndPublish(manager, context.Background(), []byte("{bad json"), false)
+	err := UnmarshallAndPublish(manager, context.Background(), []byte("{bad json"))
 	if err == nil {
 		t.Fatal("expected error for invalid json, got nil")
 	}
@@ -94,7 +95,7 @@ func TestUnmarshallAndPublish_EmptyFields_ReturnsError(t *testing.T) {
 
 	buf, _ := json.Marshal(wrappedEvent{Aliases: nil, Event: nil})
 
-	err := UnmarshallAndPublish(manager, context.Background(), buf, false)
+	err := UnmarshallAndPublish(manager, context.Background(), buf)
 	if err == nil {
 		t.Fatal("expected error for empty wrapped event")
 	}
@@ -115,10 +116,12 @@ func TestUnmarshallAndPublish_HandlerCalled(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	err = UnmarshallAndPublish(manager, ctx, data, false)
+	err = UnmarshallAndPublish(manager, ctx, data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
+	time.Sleep(2 * time.Millisecond)
 
 	if !h.Called {
 		t.Fatal("expected handler to be called")
@@ -157,10 +160,12 @@ func TestUnmarshallAndPublish_ManualWrappedEvent_WithHandlerX(t *testing.T) {
 
 	// Call UnmarshallAndPublish
 	ctx := context.Background()
-	err = UnmarshallAndPublish(manager, ctx, wrappedJSON, false)
+	err = UnmarshallAndPublish(manager, ctx, wrappedJSON)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
+	time.Sleep(2 * time.Millisecond)
 
 	// Verify that handler was called
 	if !handler.Called {
@@ -171,7 +176,7 @@ func TestUnmarshallAndPublish_ManualWrappedEvent_WithHandlerX(t *testing.T) {
 	}
 }
 
-func TestUnmarshallAndPublish_EventNotFound_SkipTrue(t *testing.T) {
+func TestUnmarshallAndPublish_EventNotFound_ShouldError(t *testing.T) {
 	manager := &EventManager{events: make(map[string]*eventDecl)}
 	manager.autoRegister.Do(func() {})
 
@@ -181,23 +186,7 @@ func TestUnmarshallAndPublish_EventNotFound_SkipTrue(t *testing.T) {
 	}
 	buf, _ := json.Marshal(wrapped)
 
-	err := UnmarshallAndPublish(manager, context.Background(), buf, true)
-	if err != nil {
-		t.Fatalf("expected nil when skipIfNF=true, got %v", err)
-	}
-}
-
-func TestUnmarshallAndPublish_EventNotFound_SkipFalse(t *testing.T) {
-	manager := &EventManager{events: make(map[string]*eventDecl)}
-	manager.autoRegister.Do(func() {})
-
-	wrapped := wrappedEvent{
-		Aliases: []string{"unknown"},
-		Event:   []byte(`{"Name":"x"}`),
-	}
-	buf, _ := json.Marshal(wrapped)
-
-	err := UnmarshallAndPublish(manager, context.Background(), buf, false)
+	err := UnmarshallAndPublish(manager, context.Background(), buf)
 	if err == nil {
 		t.Fatal("expected error when skipIfNF=false, got nil")
 	}

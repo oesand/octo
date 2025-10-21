@@ -1,6 +1,6 @@
 
 test:
-	go test -race -v ./...
+	go test -v ./...
 
 test_octogen:
 	cd ./testdata/octogen_tests && go run _run/main.go

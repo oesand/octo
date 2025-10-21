@@ -5,24 +5,24 @@ import (
 	"github.com/oesand/octo"
 )
 
-// NotificationHandler defines a contract for handling notifications of type TNotification.
+// EventHandler defines a contract for handling notifications of type TEvent.
 // Unlike requests, notifications do not return responses; instead, they are "fire-and-forget".
-type NotificationHandler[TNotification any] interface {
-	Notification(ctx context.Context, notification TNotification)
+type EventHandler[TEvent any] interface {
+	Notification(ctx context.Context, event TEvent)
 }
 
-// Publish publishes a notification of type TNotification to all registered NotificationHandlers.
+// Publish publishes a notification of type TEvent to all registered NotificationHandlers.
 // The notification is sent to every matching handler until either:
 //   - The context is cancelled, or
 //   - All handlers have been executed.
-func Publish[TNotification any](
+func Publish[TEvent any](
 	container *octo.Container,
 	ctx context.Context,
-	notification TNotification,
+	event TEvent,
 ) {
 	injects := octo.ResolveInjections(container)
 	for decl := range injects {
-		if !octo.DeclOfType[NotificationHandler[TNotification]](decl) {
+		if !octo.DeclOfType[EventHandler[TEvent]](decl) {
 			continue
 		}
 
@@ -31,7 +31,7 @@ func Publish[TNotification any](
 			break
 		}
 
-		handler := decl.Value().(NotificationHandler[TNotification])
-		handler.Notification(ctx, notification)
+		handler := decl.Value().(EventHandler[TEvent])
+		handler.Notification(ctx, event)
 	}
 }
