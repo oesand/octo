@@ -10,7 +10,6 @@ import (
 )
 
 // InjectManager injects a EventManager into the container if not already registered.
-// It automatically registers all event types discovered in the container.
 func InjectManager(container *octo.Container) *EventManager {
 	manager := octo.TryResolve[*EventManager](container)
 	if manager != nil {
