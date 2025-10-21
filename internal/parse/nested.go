@@ -43,6 +43,10 @@ func parseTypeLink(typ types.Type, options ParseExtraOption) (types.Type, *decl.
 		typ = pointer.Elem()
 	}
 
+	if basic, ok := typ.(*types.Basic); ok && basic.Kind() == types.Invalid {
+		return nil, nil, errors.New("unresolved reference (sometimes `go mod tidy` can help if all okay)")
+	}
+
 	named, ok := typ.(*types.Named)
 	if !ok {
 		return nil, nil, unexpectedTypeErr(options)

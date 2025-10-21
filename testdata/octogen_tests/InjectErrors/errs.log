@@ -27,3 +27,6 @@
 /foo/decl.go:48: linked function returning: unexpected type, supported only struct, pointer struct, interface
 /foo/decl.go:49: linked function returning: unexpected type, supported only struct, pointer struct, interface
 /foo/decl.go:50: linked function returning: unexpected type, supported only struct, pointer struct, interface
+/foo/decl.go:52: linked struct field (Ref [1]): unresolved reference (sometimes `go mod tidy` can help if all okay)
+/foo/decl.go:53: linked struct field (Ref [1]): unresolved reference (sometimes `go mod tidy` can help if all okay)
+/foo/decl.go:54: linked function param (ref [1]): unresolved reference (sometimes `go mod tidy` can help if all okay)

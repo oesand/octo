@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/oesand/octo/cmd"
 	"github.com/oesand/octo/internal"
 	"github.com/oesand/octo/internal/parse"
 	"golang.org/x/mod/modfile"
@@ -13,6 +14,7 @@ import (
 
 const UsageText = "Usage of octogen: \n" +
 	"\t octogen # Help - you here ;) \n" +
+	"\t octogen version # Print version \n" +
 	"\t octogen -gen # Scans packages and generate Injects follows instructions \n" +
 	"\t\t ... -name <name:str> # Defines filename for instructions aggregation. Must ends with `.go` extension. Default: octo_gen.go \n" +
 	"For more information, see: \n\thttps://github.com/oesand/octo \n"
@@ -22,6 +24,12 @@ func PrintUsage() {
 }
 
 func main() {
+	args := os.Args
+	if len(args) == 2 && args[1] == "version" {
+		fmt.Printf("octogen %s \n", cmd.Version)
+		return
+	}
+
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmsgprefix)
 	log.SetPrefix("[octogen]: ")
 	flag.Usage = PrintUsage

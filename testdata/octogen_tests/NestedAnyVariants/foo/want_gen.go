@@ -6,48 +6,56 @@ package foo
 
 import (
 	"github.com/oesand/octo"
-	als1 "github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested"
-	als2 "github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested/inner"
+	als1 "github.com/oesand/octo/mch"
+	als2 "github.com/oesand/octo/mediatr/mdtreflect"
+	als3 "github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested"
+	als4 "github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested/inner"
+	als5 "net"
 )
 
 func IncludeAny(container *octo.Container) {
-    octo.Inject(container, func(container *octo.Container) *als2.Struct {
-        return &als2.Struct{
+    octo.Inject(container, func(container *octo.Container) *als4.Struct {
+        return &als4.Struct{
         }
     })
-    octo.InjectNamed(container, "key1", func(container *octo.Container) *als2.Named {
-        return &als2.Named{
-            Inf:octo.Resolve[als2.Inf](container),
-            SlInf:octo.ResolveAll[als2.Inf](container),
+    octo.InjectNamed(container, "key1", func(container *octo.Container) *als4.Named {
+        return &als4.Named{
+            Inf:octo.Resolve[als4.Inf](container),
+            SlInf:octo.ResolveAll[als4.Inf](container),
         }
     })
-    octo.Inject(container, func(container *octo.Container) *als1.Other {
-        return &als1.Other{
-            Nm:octo.ResolveNamed[*als2.Named](container, "key1"),
-            Inf:octo.Resolve[als2.Inf](container),
-            SlInf:octo.ResolveAll[als2.Inf](container),
+    octo.Inject(container, func(container *octo.Container) *als3.Other {
+        return &als3.Other{
+            Nm:octo.ResolveNamed[*als4.Named](container, "key1"),
+            Inf:octo.Resolve[als4.Inf](container),
+            SlInf:octo.ResolveAll[als4.Inf](container),
+            Mem:octo.Resolve[*als1.MemCache](container),
         }
     })
-    octo.Inject(container, func(container *octo.Container) *als1.NewestStruct {
-        return &als1.NewestStruct{
+    octo.Inject(container, func(container *octo.Container) *als3.NewestStruct {
+        return &als3.NewestStruct{
         }
     })
-    octo.Inject(container, func(container *octo.Container) *als1.NewestStruct {
-        return als1.NewStruct(
-            octo.Resolve[als2.Inf](container),
-            octo.ResolveAll[als2.Inf](container),
-            octo.Resolve[*als1.Other](container),
-            octo.Resolve[als2.Struct](container),
-            octo.Resolve[*als2.Named](container),
+    octo.Inject(container, func(container *octo.Container) *als3.NewestStruct {
+        return als3.NewStruct(
+            octo.Resolve[als4.Inf](container),
+            octo.ResolveAll[als4.Inf](container),
+            octo.Resolve[*als3.Other](container),
+            octo.Resolve[als4.Struct](container),
+            octo.Resolve[*als4.Named](container),
+            octo.Resolve[*als1.MemCache](container),
+            octo.Resolve[*als5.Dialer](container),
+            octo.Resolve[als5.Conn](container),
         )
     })
-    octo.Inject(container, func(container *octo.Container) als1.NewestStruct {
-        return als1.NewStct(
-            octo.Resolve[als2.Inf](container),
-            octo.ResolveAll[als2.Inf](container),
-            octo.Resolve[als1.Other](container),
-            octo.Resolve[*als2.Struct](container),
-            octo.Resolve[als2.Named](container),
+    octo.Inject(container, func(container *octo.Container) als3.NewestStruct {
+        return als3.NewStct(
+            octo.Resolve[als4.Inf](container),
+            octo.ResolveAll[als4.Inf](container),
+            octo.Resolve[als3.Other](container),
+            octo.Resolve[*als4.Struct](container),
+            octo.Resolve[als4.Named](container),
+            octo.Resolve[*als2.EventManager](container),
         )
     })
 }

@@ -11,6 +11,10 @@ type StructWithInvalidField struct{
 	Str string
 }
 
+type StructWithInvalidRef struct{
+	Ref InvalidRef
+}
+
 func NewStruct() NormalStruct {
 	return &NormalStruct{}
 }
@@ -46,3 +50,5 @@ func FuncReturnSliceStct() []NormalStruct {
 func FuncReturnSlicePtrStct() []*NormalStruct {
 	return nil
 }
+
+func FunctionWithInvalidReference(ref InvalidRef) *NormalStruct {}
