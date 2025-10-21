@@ -362,7 +362,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 									imports.Add(stctLoc.Package)
 									stct := typ.(*types.Struct)
 
-									var fields = make([]*decl.InjectedStructField, stct.NumFields())
+									var fields []*decl.InjectedStructField
 									for i := 0; i < stct.NumFields(); i++ {
 										field := stct.Field(i)
 										if !field.Exported() {
@@ -386,11 +386,11 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 
 										imports.Add(fieldLoc.Package)
 
-										fields[i] = &decl.InjectedStructField{
+										fields = append(fields, &decl.InjectedStructField{
 											Name:      field.Name(),
 											Locale:    fieldLoc,
 											KeyOption: keyOption,
-										}
+										})
 									}
 
 									injects = append(injects, &decl.InjectedStruct{

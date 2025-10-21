@@ -48,4 +48,8 @@ func IncludeAny() {
 	octogen.Inject(FuncReturnSliceInf)
 	octogen.Inject(FuncReturnSliceStct)
 	octogen.Inject(FuncReturnSlicePtrStct)
+
+	octogen.Inject[StructWithInvalidRef]()
+	octogen.Inject[*StructWithInvalidRef]()
+	octogen.Inject(FunctionWithInvalidReference)
 }
