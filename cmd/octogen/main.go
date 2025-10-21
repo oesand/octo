@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/oesand/octo/cmd"
 	"github.com/oesand/octo/internal"
 	"github.com/oesand/octo/internal/parse"
 	"golang.org/x/mod/modfile"
@@ -14,8 +13,7 @@ import (
 
 const UsageText = "Usage of octogen: \n" +
 	"\t octogen # Help - you here ;) \n" +
-	"\t octogen version # Print version \n" +
-	"\t octogen -gen # Scans packages and generate Injects follows instructions \n" +
+	"\t octogen gen # Scans packages and generate Injects follows instructions \n" +
 	"\t\t ... -name <name:str> # Defines filename for instructions aggregation. Must ends with `.go` extension. Default: octo_gen.go \n" +
 	"For more information, see: \n\thttps://github.com/oesand/octo \n"
 
@@ -24,27 +22,25 @@ func PrintUsage() {
 }
 
 func main() {
-	args := os.Args
-	if len(args) == 2 && args[1] == "version" {
-		fmt.Printf("octogen %s \n", cmd.Version)
-		return
-	}
-
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmsgprefix)
 	log.SetPrefix("[octogen]: ")
 	flag.Usage = PrintUsage
 
-	startGeneration := flag.Bool("gen", false, "mark for run generation")
 	generationName := flag.String("name", "octo_gen.go", "file name for generation")
 	flag.Parse()
 
-	if !*startGeneration {
+	args := flag.Args()
+	switch {
+	case len(args) == 1 && args[0] == "gen":
+		runGen(*generationName)
+	default:
 		PrintUsage()
-		return
 	}
+}
 
-	if filepath.Ext(*generationName) != ".go" {
-		log.Fatalf("'%s' is not a .go file name", *generationName)
+func runGen(genName string) {
+	if filepath.Ext(genName) != ".go" {
+		log.Fatalf("'%s' is not a .go file name", genName)
 	}
 
 	if !internal.IsFileExist("./go.mod") {
@@ -76,7 +72,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	genFileName := filepath.Clean(*generationName)
+	genFileName := filepath.Clean(genName)
 
 	for _, pkg := range packages {
 		filePath := filepath.Join(pkg.Path, genFileName)
