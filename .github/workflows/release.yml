@@ -112,4 +112,4 @@ jobs:
             FLAGS="$FLAGS --prerelease"
           fi
           
-          gh release create "$GITHUB_REF_NAME" $FLAGS bin/*
+          gh release create "${{ github.ref_name }}" $FLAGS bin/*
