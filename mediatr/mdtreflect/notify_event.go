@@ -6,6 +6,7 @@ import (
 	"github.com/oesand/octo/internal/prim"
 	"iter"
 	"reflect"
+	"sync"
 )
 
 func notificationEventTypes(container *octo.Container) iter.Seq[reflect.Type] {
@@ -44,6 +45,7 @@ func notifyEvents(container *octo.Container, ctx context.Context, evType reflect
 	ctxValue := reflect.ValueOf(ctx)
 
 	decls := octo.ResolveInjections(container)
+	var wg sync.WaitGroup
 	for decl := range decls {
 		if ctx.Err() != nil {
 			break
@@ -66,6 +68,11 @@ func notifyEvents(container *octo.Container, ctx context.Context, evType reflect
 			continue
 		}
 
-		method.Call([]reflect.Value{ctxValue, evVal})
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			method.Call([]reflect.Value{ctxValue, evVal})
+		}()
 	}
+	wg.Wait()
 }

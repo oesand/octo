@@ -3,6 +3,7 @@ package mediatr
 import (
 	"context"
 	"github.com/oesand/octo"
+	"sync"
 )
 
 // EventHandler defines a contract for handling notifications of type TEvent.
@@ -21,6 +22,7 @@ func Publish[TEvent any](
 	event TEvent,
 ) {
 	injects := octo.ResolveInjections(container)
+	var wg sync.WaitGroup
 	for decl := range injects {
 		if !octo.DeclOfType[EventHandler[TEvent]](decl) {
 			continue
@@ -32,6 +34,12 @@ func Publish[TEvent any](
 		}
 
 		handler := decl.Value().(EventHandler[TEvent])
-		handler.Notification(ctx, event)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			handler.Notification(ctx, event)
+		}()
 	}
+	wg.Wait()
 }

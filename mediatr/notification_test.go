@@ -113,7 +113,7 @@ func TestNotify_HandlerInject(t *testing.T) {
 	}
 }
 
-func TestNotify_ContextCancelStopsHandlers(t *testing.T) {
+func TestNotify_ParallelHandling(t *testing.T) {
 	c := octo.New()
 
 	blocking := &BlockingHandler{}
@@ -123,19 +123,16 @@ func TestNotify_ContextCancelStopsHandlers(t *testing.T) {
 	octo.InjectValue(c, second)
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	// Cancel shortly after Publish starts
-	go func() {
-		time.Sleep(10 * time.Millisecond)
-		cancel()
-	}()
+	go Publish[UserCreated](c, ctx, UserCreated{Username: "carol"})
 
-	Publish[UserCreated](c, ctx, UserCreated{Username: "carol"})
+	time.Sleep(10 * time.Millisecond)
 
 	if !blocking.called.Load() {
 		t.Error("expected blocking handler to be called")
 	}
-	if second.called.Load() {
+	if !second.called.Load() {
 		t.Error("expected second handler NOT to be called after cancel")
 	}
 }

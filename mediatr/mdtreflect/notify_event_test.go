@@ -5,7 +5,9 @@ import (
 	"github.com/oesand/octo"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // === Test event types ===
@@ -38,6 +40,15 @@ func (h *CtxHandler) Notification(ctx context.Context, e EventA) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	*h.calls++
+}
+
+type BlockingHandler struct {
+	called atomic.Bool
+}
+
+func (h *BlockingHandler) Notification(ctx context.Context, n EventA) {
+	h.called.Store(true)
+	<-ctx.Done()
 }
 
 // === Tests ===
@@ -150,6 +161,31 @@ func TestNotifyEvents_MultipleHandlers(t *testing.T) {
 
 	if !h1.Called || !h2.Called {
 		t.Fatal("expected both handlers called")
+	}
+}
+
+func TestNotifyEvents_ParallelHandling(t *testing.T) {
+	container := octo.New()
+
+	blocking := &BlockingHandler{}
+	handler := &HandlerA{}
+
+	octo.InjectValue(container, blocking)
+	octo.InjectValue(container, handler)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel() // cancel immediately
+
+	evVal := reflect.ValueOf(EventA{V: "stop"})
+	go notifyEvents(container, ctx, evVal.Type(), evVal)
+
+	time.Sleep(10 * time.Millisecond)
+
+	if !blocking.called.Load() {
+		t.Error("expected blocking handler to be called")
+	}
+	if !handler.Called {
+		t.Error("expected second handler NOT to be called after cancel")
 	}
 }
 
