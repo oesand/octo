@@ -6,7 +6,6 @@ import (
 	"github.com/oesand/octo"
 	"reflect"
 	"testing"
-	"time"
 )
 
 // --- Test events ---
@@ -121,8 +120,6 @@ func TestUnmarshallAndPublish_HandlerCalled(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	time.Sleep(2 * time.Millisecond)
-
 	if !h.Called {
 		t.Fatal("expected handler to be called")
 	}
@@ -164,8 +161,6 @@ func TestUnmarshallAndPublish_ManualWrappedEvent_WithHandlerX(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	time.Sleep(2 * time.Millisecond)
 
 	// Verify that handler was called
 	if !handler.Called {

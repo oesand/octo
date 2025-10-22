@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"sync"
 	"testing"
-	"time"
 )
 
 // === Test event types ===
@@ -119,8 +118,6 @@ func TestNotifyEvents_CallsMatchingHandler(t *testing.T) {
 	evVal := reflect.ValueOf(EventA{V: "x"})
 	notifyEvents(container, ctx, evVal.Type(), evVal)
 
-	time.Sleep(20 * time.Millisecond)
-
 	if !h.Called {
 		t.Fatal("expected handler to be called")
 	}
@@ -134,8 +131,6 @@ func TestNotifyEvents_SkipsWrongType(t *testing.T) {
 	ctx := context.Background()
 	evVal := reflect.ValueOf(EventB{N: 42})
 	notifyEvents(container, ctx, evVal.Type(), evVal)
-
-	time.Sleep(20 * time.Millisecond)
 
 	if h.Called {
 		t.Fatal("expected handler not to be called")
@@ -152,8 +147,6 @@ func TestNotifyEvents_MultipleHandlers(t *testing.T) {
 	ctx := context.Background()
 	evVal := reflect.ValueOf(EventA{V: "multi"})
 	notifyEvents(container, ctx, evVal.Type(), evVal)
-
-	time.Sleep(20 * time.Millisecond)
 
 	if !h1.Called || !h2.Called {
 		t.Fatal("expected both handlers called")
@@ -174,8 +167,6 @@ func TestNotifyEvents_StopsOnContextCancel(t *testing.T) {
 
 	evVal := reflect.ValueOf(EventA{V: "stop"})
 	notifyEvents(container, ctx, evVal.Type(), evVal)
-
-	time.Sleep(20 * time.Millisecond)
 
 	mu.Lock()
 	defer mu.Unlock()

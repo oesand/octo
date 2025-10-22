@@ -1,4 +1,4 @@
-package mch
+package mc
 
 import (
 	"errors"
