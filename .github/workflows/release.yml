@@ -103,7 +103,7 @@ jobs:
       
           echo "Detected version: MAJOR=$MAJOR, MINOR=$MINOR, PATCH=$PATCH"
       
-          FLAGS="--title \"$GITHUB_REF_NAME\" --generate-notes"
+          FLAGS="--title $GITHUB_REF_NAME --generate-notes"
           
           if [ "$PATCH" = "0" ]; then
             echo "🟢 Detected minor release ($MAJOR.$MINOR.0) — creating release"
