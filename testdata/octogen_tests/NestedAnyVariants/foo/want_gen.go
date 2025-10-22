@@ -6,7 +6,7 @@ package foo
 
 import (
 	"github.com/oesand/octo"
-	als1 "github.com/oesand/octo/mch"
+	als1 "github.com/oesand/octo/mc"
 	als2 "github.com/oesand/octo/mediatr/mdtreflect"
 	als3 "github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested"
 	als4 "github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested/inner"

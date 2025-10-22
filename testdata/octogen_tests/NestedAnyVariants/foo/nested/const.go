@@ -2,7 +2,7 @@ package nested
 
 import (
 	"github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested/inner"
-	"github.com/oesand/octo/mch"
+	"github.com/oesand/octo/mc"
 	"github.com/oesand/octo/mediatr/mdtreflect"
 	"net"
 )
@@ -11,7 +11,7 @@ type Other struct {
 	Nm    *inner.Named `key:"key1"`
 	Inf   inner.Inf
 	SlInf []inner.Inf
-	Mem   *mch.MemCache
+	Mem   *mc.MemCache
 	d 	  *net.Dialer
 	conn  net.Conn
 }
@@ -24,7 +24,7 @@ func NewStruct(
 	o *Other,
 	st inner.Struct,
 	nm *inner.Named,
-	m *mch.MemCache
+	m *mc.MemCache
 	d *net.Dialer
 	conn net.Conn
 ) *NewestStruct {
