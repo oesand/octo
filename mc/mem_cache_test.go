@@ -7,226 +7,138 @@ import (
 	"time"
 )
 
-func TestGetOrCreate_StoresAndReturnsValue(t *testing.T) {
-	cache := &MemCache{}
-	calls := 0
+// Test basic GetOrCreate and TryGet logic.
+func TestMemCache_Basic(t *testing.T) {
+	var mc MemCache
+	providerCalls := 0
 
-	val, err := GetOrCreate(cache, "k", 100*time.Millisecond, func() (int, error) {
-		calls++
-		return 42, nil
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if val != 42 {
-		t.Fatalf("expected 42, got %v", val)
-	}
-	if calls != 1 {
-		t.Fatalf("expected provider to be called once, got %d", calls)
-	}
-	if len(cache.store) != 1 {
-		t.Fatalf("expected 1 item in cache, got %d", len(cache.store))
-	}
-}
-
-func TestGetOrCreate_UsesCachedValue(t *testing.T) {
-	cache := &MemCache{}
-	calls := 0
-	provider := func() (int, error) {
-		calls++
-		return 123, nil
-	}
-
-	_, _ = GetOrCreate(cache, "a", time.Second, provider)
-	val2, err := GetOrCreate(cache, "a", time.Second, provider)
-
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if val2 != 123 {
-		t.Fatalf("expected cached value 123, got %v", val2)
-	}
-	if calls != 1 {
-		t.Fatalf("provider called %d times, expected once", calls)
-	}
-}
-
-func TestGetOrCreate_ExpiredValueRecreated(t *testing.T) {
-	cache := &MemCache{}
-	calls := 0
-	provider := func() (string, error) {
-		calls++
+	v, err := GetOrCreate(&mc, "key", time.Second, func() (string, error) {
+		providerCalls++
 		return "value", nil
+	})
+	if err != nil || v != "value" {
+		t.Fatalf("unexpected result: %v, %v", v, err)
 	}
 
-	_, _ = GetOrCreate(cache, "x", 10*time.Millisecond, provider)
-	time.Sleep(15 * time.Millisecond)
-	val, err := GetOrCreate(cache, "x", 10*time.Millisecond, provider)
+	// Should use cached value.
+	found, ttl, v2 := TryGet[string](&mc, "key")
+	if !found || v2 != "value" || ttl <= 0 {
+		t.Fatalf("expected found cached value, got %v (%v, ttl=%v)", v2, found, ttl)
+	}
 
+	// Provider should not have been called again.
+	if providerCalls != 1 {
+		t.Fatalf("expected 1 provider call, got %d", providerCalls)
+	}
+}
+
+// Test expiration of keys.
+func TestMemCache_Expiration(t *testing.T) {
+	var mc MemCache
+	_, err := GetOrCreate(&mc, "expiring", 10*time.Millisecond, func() (string, error) {
+		return "soon", nil
+	})
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatal(err)
 	}
-	if val != "value" {
-		t.Fatalf("expected value, got %v", val)
-	}
-	if calls != 2 {
-		t.Fatalf("expected provider called twice, got %d", calls)
+	time.Sleep(20 * time.Millisecond)
+
+	found, _, _ := TryGet[string](&mc, "expiring")
+	if found {
+		t.Fatal("expected expired value not to be found")
 	}
 }
 
-func TestGetOrCreate_ProviderErrorNotCached(t *testing.T) {
-	cache := &MemCache{}
-	calls := 0
-	provider := func() (int, error) {
-		calls++
-		return 0, errors.New("fail")
-	}
-
-	_, err := GetOrCreate(cache, "bad", time.Second, provider)
-	if err == nil {
-		t.Fatal("expected error from provider")
-	}
-	if len(cache.store) != 0 {
-		t.Fatalf("expected no items cached on provider error")
-	}
-}
-
-func TestGetOrCreate_SmallDurationError(t *testing.T) {
-	cache := &MemCache{}
-	_, err := GetOrCreate(cache, "x", 1*time.Millisecond, func() (int, error) {
-		return 1, nil
+// Test provider error removes key.
+func TestMemCache_ProviderError(t *testing.T) {
+	var mc MemCache
+	_, err := GetOrCreate(&mc, "bad", time.Second, func() (string, error) {
+		return "", errors.New("fail")
 	})
 	if err == nil {
-		t.Fatal("expected duration error, got nil")
+		t.Fatal("expected provider error")
+	}
+
+	found, _, _ := TryGet[string](&mc, "bad")
+	if found {
+		t.Fatal("expected failed key not cached")
 	}
 }
 
-func TestJanitorPurge_RemovesExpiredItems(t *testing.T) {
-	cache := &MemCache{}
-	now := time.Now().UnixMilli()
-	cache.store = map[string]*cacheItem{
-		"a": {expiredAt: now - 10, value: 1},
-		"b": {expiredAt: now + 9999, value: 2},
-	}
+// Test janitor removes expired keys.
+func TestMemCache_JanitorPurge(t *testing.T) {
+	var mc MemCache
 
-	stopped := cache.janitorPurge()
+	// Add one expired, one active
+	mc.entries.Store("a", &cacheEntry{expiredAt: time.Now().Add(-1 * time.Second), value: "old"})
+	mc.entries.Store("b", &cacheEntry{expiredAt: time.Now().Add(time.Hour), value: "live"})
+
+	stopped := mc.janitorPurge()
 	if stopped {
-		t.Fatal("expected janitor not to stop yet")
-	}
-	if len(cache.store) != 1 {
-		t.Fatalf("expected 1 remaining item, got %d", len(cache.store))
-	}
-}
-
-func TestJanitorPurge_StopsWhenEmpty(t *testing.T) {
-	cache := &MemCache{}
-	now := time.Now().UnixMilli()
-	cache.store = map[string]*cacheItem{
-		"x": {expiredAt: now - 10, value: 1},
+		t.Fatal("expected janitor to continue (still live entry)")
 	}
 
-	stopped := cache.janitorPurge()
+	mc.entries.Store("b", &cacheEntry{expiredAt: time.Now().Add(-1 * time.Second), value: "old"})
+	stopped = mc.janitorPurge()
 	if !stopped {
-		t.Fatal("expected janitor to stop when empty")
-	}
-	if cache.janitor != nil {
-		t.Fatal("expected janitor ticker to be nil after purge")
+		t.Fatal("expected janitor to stop (no live entries)")
 	}
 }
 
-func TestConcurrentAccess(t *testing.T) {
-	cache := &MemCache{}
-	wg := sync.WaitGroup{}
-	wg.Add(10)
+// Stress test: many goroutines and keys concurrently.
+func TestMemCache_ConcurrentStress(t *testing.T) {
+	var mc MemCache
+	const goroutines = 100
+	const keys = 20
+	const iters = 50
 
-	for i := 0; i < 10; i++ {
-		go func() {
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for g := 0; g < goroutines; g++ {
+		go func(id int) {
 			defer wg.Done()
-			_, _ = GetOrCreate(cache, "k", 50*time.Millisecond, func() (int, error) {
-				time.Sleep(1 * time.Millisecond)
-				return 99, nil
-			})
-		}()
-	}
-	wg.Wait()
-
-	if len(cache.store) != 1 {
-		t.Fatalf("expected 1 cached item, got %d", len(cache.store))
-	}
-}
-
-// Test that janitor is created and runs cleanup
-func TestCheckIfRunJanitor_StartsJanitorAndCleansUp(t *testing.T) {
-	cache := &MemCache{
-		store: make(map[string]*cacheItem),
+			for i := 0; i < iters; i++ {
+				key := string(rune('a' + (i % keys)))
+				v, err := GetOrCreate(&mc, key, 100*time.Millisecond, func() (string, error) {
+					return key, nil
+				})
+				if err != nil {
+					t.Errorf("provider error: %v", err)
+				}
+				if v != key {
+					t.Errorf("expected %q got %q", key, v)
+				}
+			}
+		}(g)
 	}
 
-	now := time.Now().UnixMilli()
-	cache.store["a"] = &cacheItem{expiredAt: now - 1000, value: 1}
-	cache.store["b"] = &cacheItem{expiredAt: now - 2000, value: 2}
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
 
-	cache.checkIfRunJanitor(10 * time.Millisecond)
-
-	if cache.janitor == nil {
-		t.Fatal("expected janitor to be started")
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout (possible deadlock)")
 	}
 
-	// Wait for janitor to tick and clean up
-	time.Sleep(25 * time.Millisecond)
-
-	cache.mu.Lock()
-	defer cache.mu.Unlock()
-	if len(cache.store) != 0 {
-		t.Errorf("expected store to be cleaned, got %d items", len(cache.store))
-	}
-
-	if cache.janitor != nil {
-		t.Errorf("expected janitor to stop after cleanup")
+	// Check cache has ≤ keys entries
+	count := 0
+	mc.entries.Range(func(_, _ any) bool { count++; return true })
+	if count > keys {
+		t.Fatalf("expected at most %d keys, got %d", keys, count)
 	}
 }
 
-// Test that second call does not start a new janitor
-func TestCheckIfRunJanitor_NoDuplicateJanitor(t *testing.T) {
-	cache := &MemCache{}
-	cache.checkIfRunJanitor(1 * time.Hour)
-
-	first := cache.janitor
-	cache.checkIfRunJanitor(10 * time.Millisecond)
-
-	if cache.janitor != first {
-		t.Errorf("expected same janitor instance, got new one")
-	}
-}
-
-// Test that janitor stops only when all items are deleted
-func TestCheckIfRunJanitor_StopsOnlyWhenEmpty(t *testing.T) {
-	cache := &MemCache{
-		store: make(map[string]*cacheItem),
-	}
-	cache.store["a"] = &cacheItem{expiredAt: time.Now().Add(5 * time.Second).UnixMilli(), value: 1}
-	cache.store["b"] = &cacheItem{expiredAt: time.Now().Add(5 * time.Second).UnixMilli(), value: 2}
-	cache.mu = sync.Mutex{}
-
-	cache.checkIfRunJanitor(10 * time.Millisecond)
-	if cache.janitor == nil {
-		t.Fatal("expected janitor to start")
-	}
-
-	// Add one expired item so janitor partially cleans
-	time.Sleep(20 * time.Millisecond)
-	cache.mu.Lock()
-	cache.store["expired"] = &cacheItem{
-		expiredAt: time.Now().Add(-time.Second).UnixMilli(),
-		value:     "x",
-	}
-	cache.mu.Unlock()
-
-	time.Sleep(30 * time.Millisecond)
-	cache.mu.Lock()
-	count := len(cache.store)
-	cache.mu.Unlock()
-
-	if count == 0 {
-		t.Errorf("expected janitor to remain active while store not empty")
+// Test invalid duration.
+func TestMemCache_InvalidDuration(t *testing.T) {
+	var mc MemCache
+	_, err := GetOrCreate(&mc, "x", time.Millisecond, func() (string, error) {
+		return "v", nil
+	})
+	if err == nil {
+		t.Fatal("expected error for too short duration")
 	}
 }
