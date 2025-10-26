@@ -15,9 +15,8 @@ type wrappedEvent struct {
 
 // MarshallEvent serializes an event of type T with its aliases.
 // Returns error if the event is nil or marshalling fails.
-func MarshallEvent[T comparable](manager *EventManager, event T) ([]byte, error) {
-	var nilVal T
-	if event == nilVal {
+func MarshallEvent(manager *EventManager, event any) ([]byte, error) {
+	if event == nil {
 		return nil, errors.New("octo: event must not be nil")
 	}
 
@@ -26,7 +25,7 @@ func MarshallEvent[T comparable](manager *EventManager, event T) ([]byte, error)
 
 	manager.ensureAutoRegisterEvents()
 
-	typ := reflect.TypeFor[T]()
+	typ := reflect.TypeOf(event)
 	absoluteName := AbsoluteTypeName(typ)
 
 	decl, has := manager.events[absoluteName]
