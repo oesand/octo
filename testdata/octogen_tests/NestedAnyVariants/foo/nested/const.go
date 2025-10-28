@@ -3,7 +3,7 @@ package nested
 import (
 	"github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested/inner"
 	"github.com/oesand/octo/mc"
-	"github.com/oesand/octo/mediatr/mdtreflect"
+	"github.com/oesand/octo/mediatr"
 	"net"
 )
 
@@ -37,7 +37,7 @@ func NewStct(
 	o Other,
 	st *inner.Struct,
 	nm inner.Named,
-	manager *mdtreflect.EventManager
+	manager *mediatr.Manager
 ) NewestStruct {
 	return NewestStruct{}
 }

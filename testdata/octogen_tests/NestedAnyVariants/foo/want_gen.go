@@ -7,7 +7,7 @@ package foo
 import (
 	"github.com/oesand/octo"
 	als1 "github.com/oesand/octo/mc"
-	als2 "github.com/oesand/octo/mediatr/mdtreflect"
+	als2 "github.com/oesand/octo/mediatr"
 	als3 "github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested"
 	als4 "github.com/oesand/octo/testdata/octogen_tests/NestedAnyVariants/foo/nested/inner"
 	als5 "net"
@@ -55,7 +55,7 @@ func IncludeAny(container *octo.Container) {
             octo.Resolve[als3.Other](container),
             octo.Resolve[*als4.Struct](container),
             octo.Resolve[als4.Named](container),
-            octo.Resolve[*als2.EventManager](container),
+            octo.Resolve[*als2.Manager](container),
         )
     })
 }
