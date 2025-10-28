@@ -1,4 +1,4 @@
-package mdtreflect
+package mediatr
 
 import (
 	"fmt"
@@ -27,17 +27,17 @@ func TestAbsoluteTypeName(t *testing.T) {
 		{
 			name: "Struct",
 			typ:  reflect.TypeFor[SimpleStruct](),
-			want: "github.com/oesand/octo/mediatr/mdtreflect/SimpleStruct",
+			want: "github.com/oesand/octo/mediatr/SimpleStruct",
 		},
 		{
 			name: "*Struct",
 			typ:  reflect.TypeFor[*SimpleStruct](),
-			want: "*github.com/oesand/octo/mediatr/mdtreflect/SimpleStruct",
+			want: "*github.com/oesand/octo/mediatr/SimpleStruct",
 		},
 		{
 			name: "**Struct",
 			typ:  reflect.TypeFor[**SimpleStruct](),
-			want: "**github.com/oesand/octo/mediatr/mdtreflect/SimpleStruct",
+			want: "**github.com/oesand/octo/mediatr/SimpleStruct",
 		},
 	}
 	for _, tt := range tests {

@@ -1,4 +1,4 @@
-package mdtreflect
+package mediatr
 
 import (
 	"reflect"
