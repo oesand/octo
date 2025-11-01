@@ -147,9 +147,13 @@ func Publish(
 	defer close(results)
 
 	for i := 0; i < len(handlers); i++ {
-		err := <-results
-		if err != nil {
-			return err
+		select {
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		case err := <-results:
+			if err != nil {
+				return err
+			}
 		}
 	}
 
