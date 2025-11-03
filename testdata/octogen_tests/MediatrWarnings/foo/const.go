@@ -18,11 +18,11 @@ type Iface interface {
 
 type NotFuncStruct struct{}
 
-func (*NotFuncStruct) Notification(ctx context.Context, ev *Event) {}
+func (*NotFuncStruct) Notification(ctx context.Context, ev *Event) error {}
 
 type InvalidReturnsStruct struct{}
 
-func (*InvalidReturnsStruct) Notification(ctx context.Context, ev *Event) {}
+func (*InvalidReturnsStruct) Notification(ctx context.Context, ev *Event) error {}
 
 type GenericFuncStruct struct{}
 
@@ -46,14 +46,14 @@ func (*InvalidFuncParamStruct) Request(ctx context.Context, request *Req) (*Resp
 
 type GenericStruct[T any] struct{}
 
-func (*GenericStruct[T]) Notification(ctx context.Context, ev *Event) {}
+func (*GenericStruct[T]) Notification(ctx context.Context, ev *Event) error {}
 
 type InvalidFieldStruct struct {
 	Fld0 string
 	Fld1 int
 }
 
-func (*InvalidFieldStruct) Notification(ctx context.Context, ev *Event) {}
+func (*InvalidFieldStruct) Notification(ctx context.Context, ev *Event) error {}
 
 var NewNotFuncStruct int
 

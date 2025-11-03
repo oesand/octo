@@ -10,8 +10,9 @@ func implementsMediatrHandlers(named *types.Named) bool {
 		case "Notification":
 			sig := fun.Signature()
 			return sig.Params().Len() == 2 &&
-				sig.Results().Len() == 0 &&
-				isContextType(sig.Params().At(0).Type())
+				sig.Results().Len() == 1 &&
+				isContextType(sig.Params().At(0).Type()) &&
+				isErrorType(sig.Results().At(0).Type())
 
 		case "Request":
 			sig := fun.Signature()

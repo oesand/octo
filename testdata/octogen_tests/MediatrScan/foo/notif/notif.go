@@ -14,5 +14,5 @@ type NotifHandler struct {
 	Oth  *req.Other
 }
 
-func (*NotifHandler) Notification(ctx context.Context, ev *ExampleEvent) {
+func (*NotifHandler) Notification(ctx context.Context, ev *ExampleEvent) error {
 }
