@@ -3,7 +3,7 @@ package parse
 import (
 	"fmt"
 	"github.com/oesand/octo/internal/decl"
-	"github.com/oesand/octo/internal/prim"
+	"github.com/oesand/octo/pm"
 	"go/ast"
 	"go/token"
 	"go/types"
@@ -48,7 +48,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 			continue
 		}
 
-		var imports prim.Set[string]
+		var imports pm.Set[string]
 		var funcs []*decl.FuncDecl
 
 		pkgDecl := &decl.PackageDecl{
@@ -443,12 +443,12 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 	}
 
 	if len(funcsIncludeMediatr) > 0 {
-		var extraImports prim.Set[string]
+		var extraImports pm.Set[string]
 		var parsedInjects []decl.InjectedDecl
 		for _, obj := range mediatrInjects {
 			switch ot := obj.(type) {
 			case *types.TypeName:
-				var stctImports prim.Set[string]
+				var stctImports pm.Set[string]
 				stctTyp := ot.Type().Underlying().(*types.Struct)
 
 				var failed bool
@@ -503,7 +503,7 @@ func ParseInjects(currentModule string, dir string) ([]*decl.PackageDecl, []stri
 				})
 
 			case *types.Func:
-				var funcImports prim.Set[string]
+				var funcImports pm.Set[string]
 				funcSig := ot.Signature()
 
 				_, returnLoc, err := parseTypeLink(funcSig.Results().At(0).Type(), NoEP)

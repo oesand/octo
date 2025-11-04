@@ -3,6 +3,7 @@ package mc
 import (
 	"errors"
 	"github.com/oesand/octo"
+	"github.com/oesand/octo/pm"
 	"sync"
 	"time"
 )
@@ -22,7 +23,7 @@ func Inject(container *octo.Container) {
 // Each entry expires automatically after a given duration and is purged by a janitor goroutine.
 type MemCache struct {
 	entriesMu sync.RWMutex
-	keyedMu   KeyLock[string]
+	keyedMu   pm.KeyLock[string]
 	entries   sync.Map
 
 	checkMu sync.Mutex

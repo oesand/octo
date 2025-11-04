@@ -1,13 +1,13 @@
 package decl
 
 import (
-	"github.com/oesand/octo/internal/prim"
+	"github.com/oesand/octo/pm"
 )
 
 type PackageDecl struct {
 	Name    string
 	PkgPath string
 	Path    string
-	Imports prim.Set[string]
+	Imports pm.Set[string]
 	Funcs   []*FuncDecl
 }

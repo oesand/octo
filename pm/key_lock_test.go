@@ -1,4 +1,4 @@
-package mc
+package pm
 
 import (
 	"sync"
@@ -232,4 +232,76 @@ func TestKeyLock_ConcurrentStress(t *testing.T) {
 		t.Fatalf("expected all locks removed, but have %d", len(kl.locks))
 	}
 	kl.mu.Unlock()
+}
+
+func TestKeyLock_TryLock_Simple(t *testing.T) {
+	var kl KeyLock[string]
+	key := "resource-1"
+
+	// First TryLock should succeed
+	if !kl.TryLock(key) {
+		t.Fatal("expected first TryLock to succeed")
+	}
+
+	// Second TryLock should fail (already locked)
+	if kl.TryLock(key) {
+		t.Fatal("expected TryLock to fail when lock already held")
+	}
+
+	kl.Unlock(key)
+
+	// After unlock, should succeed again
+	if !kl.TryLock(key) {
+		t.Fatal("expected TryLock to succeed after unlock")
+	}
+	kl.Unlock(key)
+}
+
+func TestKeyLock_TryLock_DifferentKeys(t *testing.T) {
+	var kl KeyLock[string]
+
+	key1 := "alpha"
+	key2 := "beta"
+
+	if !kl.TryLock(key1) {
+		t.Fatal("expected TryLock(key1) to succeed")
+	}
+	defer kl.Unlock(key1)
+
+	// Locking a different key must not block or fail
+	if !kl.TryLock(key2) {
+		t.Fatal("expected TryLock(key2) to succeed independently of key1")
+	}
+	kl.Unlock(key2)
+}
+
+func TestKeyLock_TryLock_ConcurrentSameKey(t *testing.T) {
+	var kl KeyLock[string]
+	key := "shared"
+
+	var wg sync.WaitGroup
+	var successCount int32
+	const goroutines = 20
+
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if kl.TryLock(key) {
+				time.Sleep(10 * time.Millisecond) // hold for a bit
+				kl.Unlock(key)
+				// only one goroutine at a time can acquire
+				successCount++
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	if successCount < 1 {
+		t.Fatalf("expected at least one successful TryLock, got %d", successCount)
+	}
+	if successCount > int32(goroutines) {
+		t.Fatalf("unexpected successCount=%d > goroutines=%d", successCount, goroutines)
+	}
 }

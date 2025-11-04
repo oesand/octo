@@ -24,3 +24,11 @@ type ServiceDeclaration interface {
 func DeclOfType[T any](decl ServiceDeclaration) bool {
 	return decl.Type().AssignableTo(reflect.TypeFor[T]())
 }
+
+var containerPtrType = reflect.TypeFor[*Container]()
+
+func ensureCanInjectType(typ reflect.Type) {
+	if typ.AssignableTo(containerPtrType) {
+		panic("cannot inject Container")
+	}
+}
