@@ -29,6 +29,14 @@ func (m *Set[K]) Del(keys ...K) {
 	}
 }
 
+// Len returns the current number of elements
+func (m *Set[K]) Len() int {
+	if *m == nil {
+		return 0
+	}
+	return len(*m)
+}
+
 // Has checks whether a key exists in the set.
 // Returns false if the set is nil or the key is missing.
 func (m *Set[K]) Has(key K) bool {
