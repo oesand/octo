@@ -4,12 +4,25 @@ import (
 	"context"
 	"errors"
 	"github.com/oesand/octo"
+	"github.com/oesand/octo/backoff"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
 // --- Test Fixtures ---
+
+type EventHandlerFunc[TEvent any] func(ctx context.Context, event TEvent) error
+
+func (fn EventHandlerFunc[TEvent]) Notification(ctx context.Context, event TEvent) error {
+	return fn(ctx, event)
+}
+
+type RequestHandlerFunc[TRequest Request[TResponse], TResponse any] func(ctx context.Context, request TRequest) (TResponse, error)
+
+func (fn RequestHandlerFunc[TRequest, TResponse]) Request(ctx context.Context, request TRequest) (TResponse, error) {
+	return fn(ctx, request)
+}
 
 type EventX struct {
 	Name string
@@ -158,5 +171,59 @@ func TestSend_NoHandler(t *testing.T) {
 	_, err := Send[RequestX, ResponseX](manager, context.Background(), RequestX{Value: 1})
 	if err == nil {
 		t.Fatal("expected error for missing handler")
+	}
+}
+
+func TestSend_WithBackOff(t *testing.T) {
+	container := octo.New()
+	ctx := context.Background()
+
+	manager := Inject(container,
+		WithBackOff(
+			backoff.WithMaxAttempts(3),
+			backoff.WithDefaultBehaviour(backoff.Constant(time.Millisecond))))
+
+	testErr := errors.New("test error")
+
+	var counter atomic.Int32
+	octo.InjectValue(container, RequestHandlerFunc[RequestX, ResponseX](func(ctx context.Context, request RequestX) (ResponseX, error) {
+		counter.Add(1)
+		return ResponseX{}, testErr
+	}))
+
+	_, err := Send(manager, ctx, RequestX{})
+
+	if err != testErr {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if counter.Load() != 4 {
+		t.Fatalf("expected wrapped behaviour to be used, counter: %d", counter.Load())
+	}
+}
+
+func TestPublish_WithBackOff(t *testing.T) {
+	container := octo.New()
+	ctx := context.Background()
+
+	manager := Inject(container,
+		WithBackOff(
+			backoff.WithMaxAttempts(3),
+			backoff.WithDefaultBehaviour(backoff.Constant(time.Millisecond))))
+
+	testErr := errors.New("test error")
+
+	var counter atomic.Int32
+	octo.InjectValue(container, EventHandlerFunc[EventX](func(ctx context.Context, _ EventX) error {
+		counter.Add(1)
+		return testErr
+	}))
+
+	err := Publish(manager, ctx, EventX{})
+
+	if err != testErr {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if counter.Load() != 4 {
+		t.Fatalf("expected wrapped behaviour to be used, counter: %d", counter.Load())
 	}
 }

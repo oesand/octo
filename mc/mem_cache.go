@@ -9,14 +9,15 @@ import (
 )
 
 // Inject injects a MemCache into the container if not already registered.
-func Inject(container *octo.Container) {
+func Inject(container *octo.Container) *MemCache {
 	manager := octo.TryResolve[*MemCache](container)
 	if manager != nil {
-		return
+		return manager
 	}
 
 	manager = &MemCache{}
 	octo.InjectValue(container, manager)
+	return manager
 }
 
 // MemCache represents a thread-safe in-memory cache with key-based locking.

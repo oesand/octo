@@ -92,8 +92,8 @@ func TestBackOff_WithWrappedBehaviour(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if wrappedB.called == 0 {
-		t.Fatal("expected wrapped behaviour to be used")
+	if wrappedB.called == 0 || attempts != 2 {
+		t.Fatalf("expected wrapped behaviour to be used, calls: %d", attempts)
 	}
 }
 
