@@ -1,5 +1,9 @@
 package internal
 
+type CtxKey struct {
+	Key string
+}
+
 func Unique[T comparable](in []T) []T {
 	seen := make(map[T]struct{})
 	out := make([]T, 0, len(in))

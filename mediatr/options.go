@@ -5,7 +5,7 @@ import "github.com/oesand/octo/backoff"
 type Option func(manager *Manager)
 
 // WithBackOff enables backoff support for Send and Publish (also UnmarshallAndPublish) methods
-func WithBackOff(options ...backoff.BackOffOption) Option {
+func WithBackOff(options ...backoff.Option) Option {
 	return func(manager *Manager) {
 		manager.useBackOff.Store(&backoffConf{
 			options: options,
@@ -14,5 +14,5 @@ func WithBackOff(options ...backoff.BackOffOption) Option {
 }
 
 type backoffConf struct {
-	options []backoff.BackOffOption
+	options []backoff.Option
 }

@@ -181,7 +181,7 @@ func TestSend_WithBackOff(t *testing.T) {
 	manager := Inject(container,
 		WithBackOff(
 			backoff.WithMaxAttempts(3),
-			backoff.WithDefaultBehaviour(backoff.Constant(time.Millisecond))))
+			backoff.WithDefaultBehaviour(backoff.Constant(time.Nanosecond))))
 
 	testErr := errors.New("test error")
 
@@ -208,7 +208,7 @@ func TestPublish_WithBackOff(t *testing.T) {
 	manager := Inject(container,
 		WithBackOff(
 			backoff.WithMaxAttempts(3),
-			backoff.WithDefaultBehaviour(backoff.Constant(time.Millisecond))))
+			backoff.WithDefaultBehaviour(backoff.Constant(time.Nanosecond))))
 
 	testErr := errors.New("test error")
 

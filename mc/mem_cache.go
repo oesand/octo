@@ -68,13 +68,13 @@ func (cache *MemCache) checkIfRunJanitor(d time.Duration) {
 }
 
 func (cache *MemCache) janitorPurge() bool {
-	cache.entriesMu.Lock()
-	defer cache.entriesMu.Unlock()
-
 	now := time.Now()
 
 	var canContinue bool
 	var keys []string
+
+	cache.entriesMu.RLock()
+
 	cache.entries.Range(func(k, e interface{}) bool {
 		entry := e.(*cacheEntry)
 		if now.Before(entry.expiredAt) {
@@ -86,9 +86,13 @@ func (cache *MemCache) janitorPurge() bool {
 		return true
 	})
 
+	cache.entriesMu.RUnlock()
+
+	cache.entriesMu.Lock()
 	for _, key := range keys {
 		cache.entries.Delete(key)
 	}
+	defer cache.entriesMu.Unlock()
 
 	if !canContinue {
 		cache.janitor = nil
@@ -158,4 +162,20 @@ func GetOrCreate[T any](cache *MemCache, key string, d time.Duration, provider f
 	cache.checkIfRunJanitor(10 * time.Minute)
 
 	return value, nil
+}
+
+// ExtendUntil changes expiration time of cache entry if exists
+func ExtendUntil(cache *MemCache, key string, expiredAt time.Time) bool {
+	cache.lockKey(key)
+	defer cache.unlockKey(key)
+
+	var entry *cacheEntry
+	ce, has := cache.entries.Load(key)
+	if !has {
+		return false
+	}
+
+	entry = ce.(*cacheEntry)
+	entry.expiredAt = expiredAt
+	return true
 }
