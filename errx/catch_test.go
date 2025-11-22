@@ -1,7 +1,6 @@
 package errx_test
 
 import (
-	"context"
 	"errors"
 	"github.com/oesand/octo/errx"
 	"sync/atomic"
@@ -9,8 +8,7 @@ import (
 )
 
 func Test_TryHandleErrorf(t *testing.T) {
-	ctx := context.Background()
-	wrap := errx.Try(ctx, func(ctx context.Context) {
+	wrap := errx.Try(func() {
 		errx.Errorf("test err")
 	})
 
@@ -23,8 +21,7 @@ func Test_TryHandleErrorf(t *testing.T) {
 }
 
 func Test_TryHandleError(t *testing.T) {
-	ctx := context.Background()
-	wrap := errx.Try(ctx, func(ctx context.Context) {
+	wrap := errx.Try(func() {
 		errx.Error(errors.New("test err"))
 	})
 
@@ -37,7 +34,6 @@ func Test_TryHandleError(t *testing.T) {
 }
 
 func Test_TrySkipUnknownPanic(t *testing.T) {
-	ctx := context.Background()
 	defer func() {
 		r := recover()
 		if r == nil {
@@ -49,7 +45,7 @@ func Test_TrySkipUnknownPanic(t *testing.T) {
 		}
 	}()
 
-	errx.Try(ctx, func(ctx context.Context) {
+	errx.Try(func() {
 		panic(errors.New("test err"))
 	})
 }
@@ -61,13 +57,12 @@ func (customError) Error() string {
 }
 
 func Test_TryCatch(t *testing.T) {
-	ctx := context.Background()
 	var handle atomic.Int32
-	wrap := errx.Try(ctx, func(ctx context.Context) {
+	wrap := errx.Try(func() {
 		errx.Error(customError{})
-	}, errx.Catch(func(ctx context.Context, e customError) {
+	}, errx.Catch(func(e customError) {
 		handle.Add(1)
-	}), errx.Catch(func(ctx context.Context, e customError) {
+	}), errx.Catch(func(e customError) {
 		handle.Add(1)
 	}))
 
@@ -123,12 +118,11 @@ func TestError_Panic(t *testing.T) {
 }
 
 func TestTry_Catch(t *testing.T) {
-	ctx := context.Background()
 	caught := false
 
-	errx.Try(ctx, func(ctx context.Context) {
+	errx.Try(func() {
 		errx.Errorf("panic inside Try")
-	}, errx.Catch(func(ctx context.Context, e error) {
+	}, errx.Catch(func(e error) {
 		caught = true
 	}))
 
@@ -138,13 +132,12 @@ func TestTry_Catch(t *testing.T) {
 }
 
 func TestCatch_TypeMatching(t *testing.T) {
-	ctx := context.Background()
 	myErr := errors.New("specific error")
 	caught := false
 
-	errx.Try(ctx, func(ctx context.Context) {
+	errx.Try(func() {
 		errx.Error(myErr)
-	}, errx.Catch(func(ctx context.Context, e error) {
+	}, errx.Catch(func(e error) {
 		if e.Error() == "specific error" {
 			caught = true
 		}
@@ -163,7 +156,7 @@ func TestTry_RepanicNonErrWrap(t *testing.T) {
 		}
 	}()
 
-	errx.Try(context.Background(), func(ctx context.Context) {
+	errx.Try(func() {
 		panic("non-ErrWrap panic")
 	})
 }

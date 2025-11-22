@@ -43,7 +43,7 @@ func BackOff(ctx context.Context, op func(context.Context) error, options ...Opt
 
 		var errxWrap *errx.ErrWrap
 		if opts.catchErrX {
-			errxWrap = errx.Try(ctx, func(ctx context.Context) {
+			errxWrap = errx.Try(func() {
 				err = op(ctx)
 			})
 
