@@ -74,20 +74,11 @@ func Test_TryCatch(t *testing.T) {
 	if wrap == nil {
 		t.Fatal("wrap is nil")
 	}
-	if _, ok := wrap.Err.(customError); !ok {
+	if _, ok := wrap.Unwrap().(customError); !ok {
 		t.Errorf("wrap.Error() = %q, want %q", wrap.Error(), "custom error")
 	}
 	if handle.Load() != 1 {
 		t.Errorf("handle.Load() = %d, want %d", handle.Load(), 1)
-	}
-}
-
-func TestErrWrap_Error(t *testing.T) {
-	origErr := errors.New("original error")
-	wrap := &errx.ErrWrap{Err: origErr}
-
-	if wrap.Error() != "original error" {
-		t.Errorf("expected %q, got %q", "original error", wrap.Error())
 	}
 }
 
@@ -103,8 +94,8 @@ func TestErrorf_Panic(t *testing.T) {
 			t.Fatalf("expected *ErrWrap, got %T", r)
 		}
 
-		if wrap.Err.Error() != "formatted 42" {
-			t.Errorf("expected 'formatted 42', got %q", wrap.Err.Error())
+		if wrap.Error() != "formatted 42" {
+			t.Errorf("expected 'formatted 42', got %q", wrap.Error())
 		}
 	}()
 
@@ -123,8 +114,8 @@ func TestError_Panic(t *testing.T) {
 			t.Fatalf("expected *ErrWrap, got %T", r)
 		}
 
-		if wrap.Err.Error() != "simple error" {
-			t.Errorf("expected 'simple error', got %q", wrap.Err.Error())
+		if wrap.Error() != "simple error" {
+			t.Errorf("expected 'simple error', got %q", wrap.Error())
 		}
 	}()
 

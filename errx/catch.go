@@ -34,7 +34,7 @@ func Try(ctx context.Context, op func(context.Context), catchers ...Catcher) (wr
 func Catch[E error](matcher func(context.Context, E)) Catcher {
 	return func(ctx context.Context, wrap *ErrWrap) bool {
 		var err E
-		if errors.As(wrap.Err, &err) {
+		if errors.As(wrap, &err) {
 			matcher(ctx, err)
 			return true
 		}
