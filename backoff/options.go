@@ -1,18 +1,12 @@
 package backoff
 
-import (
-	"github.com/oesand/octo/pm"
-	"reflect"
-)
-
 // Option represents a function that modifies retry configuration.
 type Option func(*backOffOptions)
 
 type backOffOptions struct {
-	attempts   int
-	behaviour  Behaviour
-	catchErrX  bool
-	abortTypes pm.Set[reflect.Type]
+	attempts  int
+	behaviour Behaviour
+	catchErrX bool
 }
 
 // WithMaxAttempts sets the maximum number of retry attempts.
