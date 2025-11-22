@@ -3,6 +3,7 @@ package backoff
 import (
 	"context"
 	"errors"
+	"github.com/oesand/octo/errx"
 	"runtime/debug"
 	"time"
 )
@@ -21,9 +22,7 @@ var DefaultBehaviour Behaviour
 //   - Retry up to `attempts` times (default 5) if errors occur.
 //   - Wait according to the provided `Behaviour` (or `DefaultBehaviour`).
 //   - Stop early if context is cancelled.
-//
-// The generic type T represents the successful result type of the operation.
-func BackOff[T any](ctx context.Context, op func(context.Context) (T, error), options ...BackOffOption) (T, error) {
+func BackOff(ctx context.Context, op func(context.Context) error, options ...Option) error {
 	opts := backOffOptions{
 		attempts:  DefaultMaxAttempts,
 		behaviour: DefaultBehaviour,
@@ -33,22 +32,43 @@ func BackOff[T any](ctx context.Context, op func(context.Context) (T, error), op
 		opt(&opts)
 	}
 
-	var res T
 	var err error
 
 	var attempt int
 	for {
-		res, err = op(ctx)
+		ctx := context.WithValue(ctx, settingsKey, &BackOffSettings{
+			attempt:     attempt,
+			maxAttempts: opts.attempts,
+		})
+
+		var errxWrap *errx.ErrWrap
+		if opts.catchErrX {
+			errxWrap = errx.Try(ctx, func(ctx context.Context) {
+				err = op(ctx)
+			})
+
+			if errxWrap != nil {
+				err = errxWrap.Unwrap()
+			}
+		} else {
+			err = op(ctx)
+		}
+
 		if err == nil {
 			break
 		}
 
 		var behaviour Behaviour
 
-		var wp *BackoffWrap
+		var wp *BackOffWrap
 		if errors.As(err, &wp) {
 			behaviour = wp.Behaviour
-			err = wp.error
+		} else if errxWrap != nil {
+			wp = &BackOffWrap{
+				error:      err,
+				StackTrace: errxWrap.StackTrace,
+			}
+			err = wp
 		}
 
 		if opts.attempts > 0 && attempt >= opts.attempts {
@@ -69,12 +89,12 @@ func BackOff[T any](ctx context.Context, op func(context.Context) (T, error), op
 			case <-time.After(waitDuration):
 				break
 			case <-ctx.Done():
-				return res, context.Cause(ctx)
+				return context.Cause(ctx)
 			}
 		} else {
 			select {
 			case <-ctx.Done():
-				return res, context.Cause(ctx)
+				return context.Cause(ctx)
 			default:
 			}
 		}
@@ -82,40 +102,45 @@ func BackOff[T any](ctx context.Context, op func(context.Context) (T, error), op
 		attempt++
 	}
 
-	return res, err
+	return err
 }
 
 // Wrap attaches a retry behaviour and stack trace to an error.
 // Useful for marking errors as retryable with custom timing.
 func Wrap(err error, behaviour Behaviour) error {
-	var wp *BackoffWrap
+	var wp *BackOffWrap
 	if errors.As(err, &wp) {
 		return err
 	}
-	return &BackoffWrap{
+	return &BackOffWrap{
 		error:      err,
 		Behaviour:  behaviour,
 		StackTrace: debug.Stack(),
 	}
 }
 
-// Catch helps capture BackoffWrap created by Wrap
-func Catch(err error) (*BackoffWrap, error) {
+// Catch helps capture BackOffWrap created by Wrap
+func Catch(err error) (*BackOffWrap, error) {
 	if err == nil {
 		return nil, nil
 	}
 
-	var wp *BackoffWrap
+	var wp *BackOffWrap
 	if errors.As(err, &wp) {
-		err = wp.error
+		err = wp.Unwrap()
 	}
 
 	return wp, err
 }
 
-// BackoffWrap wraps an error with an optional retry behaviour and stack trace.
-type BackoffWrap struct {
+// BackOffWrap wraps an error with an optional retry behaviour and stack trace.
+type BackOffWrap struct {
 	error
 	StackTrace []byte
 	Behaviour  Behaviour
+}
+
+// Unwrap implements the error Wrap interface
+func (e *BackOffWrap) Unwrap() error {
+	return e.error
 }

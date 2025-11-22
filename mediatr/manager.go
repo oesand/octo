@@ -156,9 +156,7 @@ func Publish(
 		go func() {
 			var err error
 			if bc != nil {
-				_, err = backoff.BackOff(ctx, func(ctx context.Context) (struct{}, error) {
-					return struct{}{}, handler(ctx, event)
-				}, bc.options...)
+				err = backoff.BackOff(ctx, func(ctx context.Context) error { return handler(ctx, event) }, bc.options...)
 			} else {
 				err = handler(ctx, event)
 			}
@@ -203,8 +201,10 @@ func Send[TRequest Request[TResponse], TResponse any](
 	var resp any
 	var err error
 	if bc := manager.useBackOff.Load(); bc != nil {
-		resp, err = backoff.BackOff(ctx, func(ctx context.Context) (any, error) {
-			return handler(ctx, request)
+		err = backoff.BackOff(ctx, func(ctx context.Context) error {
+			var err error
+			resp, err = handler(ctx, request)
+			return err
 		}, bc.options...)
 	} else {
 		resp, err = handler(ctx, request)
