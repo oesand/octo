@@ -76,23 +76,30 @@ func (cache *MemCache) janitorPurge() bool {
 	cache.entriesMu.RLock()
 
 	cache.entries.Range(func(k, e interface{}) bool {
+		key := k.(string)
+		if !cache.keyedMu.TryLock(key) {
+			return true
+		}
+		defer cache.keyedMu.Unlock(key)
+
 		entry := e.(*cacheEntry)
 		if now.Before(entry.expiredAt) {
 			canContinue = true
 			return true
 		}
 
-		keys = append(keys, k.(string))
+		keys = append(keys, key)
 		return true
 	})
 
 	cache.entriesMu.RUnlock()
 
 	cache.entriesMu.Lock()
+	defer cache.entriesMu.Unlock()
+
 	for _, key := range keys {
 		cache.entries.Delete(key)
 	}
-	defer cache.entriesMu.Unlock()
 
 	if !canContinue {
 		cache.janitor = nil
