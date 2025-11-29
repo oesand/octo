@@ -9,14 +9,18 @@ import (
 )
 
 // Inject injects a MemCache into the container if not already registered.
-func Inject(container *octo.Container) {
-	manager := octo.TryResolve[*MemCache](container)
-	if manager != nil {
-		return
+func Inject(container *octo.Container) *MemCache {
+	cache := octo.TryResolve[*MemCache](container)
+	if cache == nil {
+		cache = new(MemCache)
+		octo.InjectValue(container, cache)
 	}
 
-	manager = &MemCache{}
-	octo.InjectValue(container, manager)
+	return cache
+}
+
+func New() *MemCache {
+	return new(MemCache)
 }
 
 // MemCache represents a thread-safe in-memory cache with key-based locking.
@@ -67,25 +71,36 @@ func (cache *MemCache) checkIfRunJanitor(d time.Duration) {
 }
 
 func (cache *MemCache) janitorPurge() bool {
-	cache.entriesMu.Lock()
-	defer cache.entriesMu.Unlock()
-
 	now := time.Now()
 
 	var canContinue bool
-	var keys []string
+	var cleanKeys []string
+
+	cache.entriesMu.RLock()
+
 	cache.entries.Range(func(k, e interface{}) bool {
+		key := k.(string)
+		if !cache.keyedMu.TryLock(key) {
+			return true
+		}
+		defer cache.keyedMu.Unlock(key)
+
 		entry := e.(*cacheEntry)
 		if now.Before(entry.expiredAt) {
 			canContinue = true
 			return true
 		}
 
-		keys = append(keys, k.(string))
+		cleanKeys = append(cleanKeys, key)
 		return true
 	})
 
-	for _, key := range keys {
+	cache.entriesMu.RUnlock()
+
+	cache.entriesMu.Lock()
+	defer cache.entriesMu.Unlock()
+
+	for _, key := range cleanKeys {
 		cache.entries.Delete(key)
 	}
 
@@ -157,4 +172,20 @@ func GetOrCreate[T any](cache *MemCache, key string, d time.Duration, provider f
 	cache.checkIfRunJanitor(10 * time.Minute)
 
 	return value, nil
+}
+
+// ExtendUntil changes expiration time of cache entry if exists
+func ExtendUntil(cache *MemCache, key string, expiredAt time.Time) bool {
+	cache.lockKey(key)
+	defer cache.unlockKey(key)
+
+	var entry *cacheEntry
+	ce, has := cache.entries.Load(key)
+	if !has {
+		return false
+	}
+
+	entry = ce.(*cacheEntry)
+	entry.expiredAt = expiredAt
+	return true
 }

@@ -142,3 +142,19 @@ func TestMemCache_InvalidDuration(t *testing.T) {
 		t.Fatal("expected error for too short duration")
 	}
 }
+
+func TestMemCache_Extend(t *testing.T) {
+	var mc MemCache
+
+	oldDuration := time.Now().Add(time.Second)
+	newDuration := time.Now().Add(time.Hour)
+	mc.entries.Store("b", &cacheEntry{expiredAt: oldDuration})
+
+	ExtendUntil(&mc, "b", newDuration)
+
+	ce, _ := mc.entries.Load("b")
+	entry := ce.(*cacheEntry)
+	if entry.expiredAt != newDuration {
+		t.Errorf("expected %v, got %v", newDuration, entry.expiredAt)
+	}
+}

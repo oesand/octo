@@ -4,24 +4,32 @@ import (
 	"context"
 	"errors"
 	"github.com/oesand/octo"
+	"github.com/oesand/octo/backoff"
 	"reflect"
 	"sync"
+	"sync/atomic"
 )
 
 // Inject injects a Manager into the container if not already registered.
-func Inject(container *octo.Container) *Manager {
+//
+// Options will be applied in any case.
+func Inject(container *octo.Container, options ...Option) *Manager {
 	manager := octo.TryResolve[*Manager](container)
 	if manager != nil {
 		if manager.container == nil {
 			panic("Manager cannot be injected manually")
 		}
-		return manager
+	} else {
+		manager = &Manager{
+			container: container,
+		}
+		octo.InjectValue(container, manager)
 	}
 
-	manager = &Manager{
-		container: container,
+	for _, opt := range options {
+		opt(manager)
 	}
-	octo.InjectValue(container, manager)
+
 	return manager
 }
 
@@ -33,9 +41,14 @@ type Manager struct {
 	events          map[string]*eventDecl
 	requestHandlers map[reflect.Type]func(context.Context, any) (any, error)
 	eventHandlers   map[reflect.Type][]func(context.Context, any) error
+
+	useBackOff atomic.Pointer[backoffConf]
 }
 
 func (m *Manager) ensureInit() {
+	if m == nil {
+		panic("Manager must not be nil")
+	}
 	if m.container == nil {
 		panic("Manager cannot be injected manually, use Inject function")
 	}
@@ -138,9 +151,16 @@ func Publish(
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	bc := manager.useBackOff.Load()
 	for _, handler := range handlers {
 		go func() {
-			results <- handler(ctx, event)
+			var err error
+			if bc != nil {
+				err = backoff.BackOff(ctx, func(ctx context.Context) error { return handler(ctx, event) }, bc.options...)
+			} else {
+				err = handler(ctx, event)
+			}
+			results <- err
 		}()
 	}
 
@@ -172,12 +192,26 @@ func Send[TRequest Request[TResponse], TResponse any](
 	manager.mu.RLock()
 	defer manager.mu.RUnlock()
 
+	var nilVal TResponse
 	handler, has := manager.requestHandlers[reflect.TypeOf(request)]
 	if !has {
-		var nilVal TResponse
 		return nilVal, errors.New("octo: handler not found")
 	}
 
-	resp, err := handler(ctx, request)
+	var resp any
+	var err error
+	if bc := manager.useBackOff.Load(); bc != nil {
+		err = backoff.BackOff(ctx, func(ctx context.Context) error {
+			var err error
+			resp, err = handler(ctx, request)
+			return err
+		}, bc.options...)
+	} else {
+		resp, err = handler(ctx, request)
+	}
+
+	if resp == nil {
+		return nilVal, err
+	}
 	return resp.(TResponse), err
 }
