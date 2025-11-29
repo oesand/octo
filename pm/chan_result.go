@@ -5,13 +5,13 @@ import (
 	"iter"
 )
 
-type resultErr[T any] struct {
-	res T
-	err error
+type Res[T any] struct {
+	Val T
+	Err error
 }
 
-func (b *resultErr[T]) Result() (T, error) {
-	return b.res, b.err
+func (b *Res[T]) Result() (T, error) {
+	return b.Val, b.Err
 }
 
 // ChanRes is a typed channel whose elements implement Result() (T, error).
@@ -67,10 +67,10 @@ func (ch ChanRes[T]) Wait(ctx context.Context) ([]T, error) {
 }
 
 // Put sends a value and an error into the channel.
-func (ch ChanRes[T]) Put(res T, err error) {
-	ch <- &resultErr[T]{
-		res: res,
-		err: err,
+func (ch ChanRes[T]) Put(val T, err error) {
+	ch <- &Res[T]{
+		Val: val,
+		Err: err,
 	}
 }
 

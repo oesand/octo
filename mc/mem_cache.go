@@ -10,14 +10,17 @@ import (
 
 // Inject injects a MemCache into the container if not already registered.
 func Inject(container *octo.Container) *MemCache {
-	manager := octo.TryResolve[*MemCache](container)
-	if manager != nil {
-		return manager
+	cache := octo.TryResolve[*MemCache](container)
+	if cache == nil {
+		cache = new(MemCache)
+		octo.InjectValue(container, cache)
 	}
 
-	manager = &MemCache{}
-	octo.InjectValue(container, manager)
-	return manager
+	return cache
+}
+
+func New() *MemCache {
+	return new(MemCache)
 }
 
 // MemCache represents a thread-safe in-memory cache with key-based locking.
@@ -71,7 +74,7 @@ func (cache *MemCache) janitorPurge() bool {
 	now := time.Now()
 
 	var canContinue bool
-	var keys []string
+	var cleanKeys []string
 
 	cache.entriesMu.RLock()
 
@@ -88,7 +91,7 @@ func (cache *MemCache) janitorPurge() bool {
 			return true
 		}
 
-		keys = append(keys, key)
+		cleanKeys = append(cleanKeys, key)
 		return true
 	})
 
@@ -97,7 +100,7 @@ func (cache *MemCache) janitorPurge() bool {
 	cache.entriesMu.Lock()
 	defer cache.entriesMu.Unlock()
 
-	for _, key := range keys {
+	for _, key := range cleanKeys {
 		cache.entries.Delete(key)
 	}
 
