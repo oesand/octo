@@ -158,3 +158,21 @@ func TestMemCache_Extend(t *testing.T) {
 		t.Errorf("expected %v, got %v", newDuration, entry.expiredAt)
 	}
 }
+
+func TestMemCache_Forgot(t *testing.T) {
+	var mc MemCache
+	_, err := GetOrCreate(&mc, "x", time.Hour, func() (string, error) {
+		return "value", nil
+	})
+	if err != nil {
+		t.Fatalf("unexpected error %v", err)
+	}
+
+	if !Forgot(&mc, "x") {
+		t.Fatal("expected key should be removed")
+	}
+
+	if has, _, _ := TryGet[string](&mc, "x"); has {
+		t.Fatal("key still in cache")
+	}
+}
