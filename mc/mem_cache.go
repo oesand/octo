@@ -8,30 +8,44 @@ import (
 	"time"
 )
 
+const DefaultJanitorInterval = 5 * time.Minute
+
 // Inject injects a MemCache into the container if not already registered.
-func Inject(container *octo.Container) *MemCache {
+func Inject(container *octo.Container, options ...Option) *MemCache {
 	cache := octo.TryResolve[*MemCache](container)
 	if cache == nil {
 		cache = new(MemCache)
 		octo.InjectValue(container, cache)
 	}
 
+	for _, option := range options {
+		option(cache)
+	}
+
 	return cache
 }
 
-func New() *MemCache {
-	return new(MemCache)
+func New(options ...Option) *MemCache {
+	cache := new(MemCache)
+
+	for _, option := range options {
+		option(cache)
+	}
+
+	return cache
 }
 
 // MemCache represents a thread-safe in-memory cache with key-based locking.
 // Each entry expires automatically after a given duration and is purged by a janitor goroutine.
 type MemCache struct {
-	entriesMu sync.RWMutex
-	keyedMu   pm.KeyLock[string]
-	entries   sync.Map
+	keyedMu pm.KeyLock[string]
+	entries sync.Map
 
-	checkMu sync.Mutex
-	janitor *time.Ticker
+	usageEvictor usageEvictor
+
+	janitorMu       sync.Mutex
+	janitorInterval time.Duration
+	janitor         *time.Ticker
 }
 
 type cacheEntry struct {
@@ -39,30 +53,28 @@ type cacheEntry struct {
 	value     any
 }
 
-func (cache *MemCache) lockKey(key string) {
-	cache.entriesMu.RLock()
-	cache.keyedMu.Lock(key)
-}
-
-func (cache *MemCache) unlockKey(key string) {
-	cache.keyedMu.Unlock(key)
-	cache.entriesMu.RUnlock()
-}
-
-func (cache *MemCache) checkIfRunJanitor(d time.Duration) {
-	cache.checkMu.Lock()
-	defer cache.checkMu.Unlock()
+func (cache *MemCache) checkIfRunJanitor() {
+	cache.janitorMu.Lock()
+	defer cache.janitorMu.Unlock()
 
 	if cache.janitor != nil {
 		return
 	}
 
-	janitor := time.NewTicker(d)
+	interval := cache.janitorInterval
+	if interval == 0 {
+		interval = DefaultJanitorInterval
+	}
+	janitor := time.NewTicker(interval)
 	cache.janitor = janitor
 	go func() {
-		defer janitor.Stop()
 		for {
 			<-janitor.C
+			cache.janitorMu.Lock()
+			if cache.janitor == nil {
+				break
+			}
+			cache.janitorMu.Unlock()
 			if cache.janitorPurge() {
 				break
 			}
@@ -70,42 +82,74 @@ func (cache *MemCache) checkIfRunJanitor(d time.Duration) {
 	}()
 }
 
+func (cache *MemCache) removeFromEvictor(key string) {
+	if evc := cache.usageEvictor; evc != nil {
+		evc.Remove(key)
+	}
+}
+
+func (cache *MemCache) pushUsedToEvictor(key string) {
+	if evc := cache.usageEvictor; evc != nil {
+		evc.Used(key)
+	}
+}
+
 func (cache *MemCache) janitorPurge() bool {
 	now := time.Now()
 
-	var canContinue bool
-	var cleanKeys []string
-
-	cache.entriesMu.RLock()
+	var remainEntries bool
+	var cleanKeys pm.Set[string]
 
 	cache.entries.Range(func(k, e interface{}) bool {
 		key := k.(string)
-		if !cache.keyedMu.TryLock(key) {
-			return true
-		}
-		defer cache.keyedMu.Unlock(key)
+		cache.keyedMu.Lock(key)
 
 		entry := e.(*cacheEntry)
 		if now.Before(entry.expiredAt) {
-			canContinue = true
+			cache.keyedMu.Unlock(key)
+			remainEntries = true
 			return true
 		}
 
-		cleanKeys = append(cleanKeys, key)
+		cleanKeys.Add(key)
 		return true
 	})
 
-	cache.entriesMu.RUnlock()
+	if remainEntries {
+		if evc := cache.usageEvictor; evc != nil {
+			excess := evc.GetExcess() - len(cleanKeys)
+			if excess > 0 {
+				i := 0
+				for key := range evc.IterWorst() {
+					if cleanKeys.Has(key) {
+						continue
+					}
 
-	cache.entriesMu.Lock()
-	defer cache.entriesMu.Unlock()
+					cache.keyedMu.Lock(key)
+					cleanKeys.Add(key)
+					i++
 
-	for _, key := range cleanKeys {
-		cache.entries.Delete(key)
+					if i >= excess {
+						break
+					}
+				}
+			}
+		}
 	}
 
-	if !canContinue {
-		cache.janitor = nil
+	for key := range cleanKeys {
+		cache.entries.Delete(key)
+		cache.removeFromEvictor(key)
+		cache.keyedMu.Unlock(key)
+	}
+
+	if !remainEntries {
+		cache.janitorMu.Lock()
+		if cache.janitor != nil {
+			cache.janitor.Stop()
+			cache.janitor = nil
+		}
+		cache.janitorMu.Unlock()
 		return true
 	}
 	return false
@@ -114,8 +158,8 @@ func (cache *MemCache) janitorPurge() bool {
 // TryGet attempts to retrieve a value from the cache.
 // Returns (found, ttl, value). If the key is expired or missing, found=false.
 func TryGet[T any](cache *MemCache, key string) (bool, time.Duration, T) {
-	cache.lockKey(key)
-	defer cache.unlockKey(key)
+	cache.keyedMu.Lock(key)
+	defer cache.keyedMu.Unlock(key)
 
 	var nilVal T
 	e, ok := cache.entries.Load(key)
@@ -127,8 +171,10 @@ func TryGet[T any](cache *MemCache, key string) (bool, time.Duration, T) {
 	ttl := time.Until(entry.expiredAt)
 	if ttl <= 0 {
 		cache.entries.Delete(key)
+		cache.removeFromEvictor(key)
 		return false, 0, nilVal
 	}
+	cache.pushUsedToEvictor(key)
 
 	return true, ttl, entry.value.(T)
 }
@@ -141,8 +187,8 @@ func GetOrCreate[T any](cache *MemCache, key string, d time.Duration, provider f
 		return nilVal, errors.New("cache duration must be least 5 milliseconds")
 	}
 
-	cache.lockKey(key)
-	defer cache.unlockKey(key)
+	cache.keyedMu.Lock(key)
+	defer cache.keyedMu.Unlock(key)
 
 	var entry *cacheEntry
 	e, has := cache.entries.Load(key)
@@ -157,6 +203,7 @@ func GetOrCreate[T any](cache *MemCache, key string, d time.Duration, provider f
 	if err != nil {
 		if has {
 			cache.entries.Delete(key)
+			cache.removeFromEvictor(key)
 		}
 		return value, err
 	}
@@ -169,15 +216,16 @@ func GetOrCreate[T any](cache *MemCache, key string, d time.Duration, provider f
 	entry.expiredAt = time.Now().Add(d)
 	entry.value = value
 
-	cache.checkIfRunJanitor(10 * time.Minute)
+	cache.checkIfRunJanitor()
+	cache.pushUsedToEvictor(key)
 
 	return value, nil
 }
 
 // ExtendUntil changes expiration time of cache entry if exists
 func ExtendUntil(cache *MemCache, key string, expiredAt time.Time) bool {
-	cache.lockKey(key)
-	defer cache.unlockKey(key)
+	cache.keyedMu.Lock(key)
+	defer cache.keyedMu.Unlock(key)
 
 	var entry *cacheEntry
 	ce, has := cache.entries.Load(key)
@@ -188,4 +236,21 @@ func ExtendUntil(cache *MemCache, key string, expiredAt time.Time) bool {
 	entry = ce.(*cacheEntry)
 	entry.expiredAt = expiredAt
 	return true
+}
+
+// Forgot removes cache entry if exists
+func Forgot(cache *MemCache, key string) bool {
+	cache.keyedMu.Lock(key)
+	defer cache.keyedMu.Unlock(key)
+
+	_, has := cache.entries.LoadAndDelete(key)
+	cache.removeFromEvictor(key)
+	return has
+}
+
+// JanitorPurge force run janitor purge.
+//
+// It is recommended to use it only in tests for immediate launch.
+func JanitorPurge(cache *MemCache) {
+	cache.janitorPurge()
 }

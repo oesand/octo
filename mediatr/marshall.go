@@ -21,7 +21,7 @@ type marshallEvent struct {
 }
 
 func (m *Manager) registerEvent(eventType reflect.Type) *eventDecl {
-	absoluteName := AbsoluteTypeName(eventType)
+	absoluteName := AbsoluteEventName(eventType)
 	if decl, ok := m.events[absoluteName]; ok {
 		return decl
 	}
@@ -42,7 +42,7 @@ func AliasEvent[T any](manager *Manager, aliases ...string) {
 	}
 
 	typ := reflect.TypeFor[T]()
-	absoluteName := AbsoluteTypeName(typ)
+	absoluteName := AbsoluteEventName(typ)
 
 	if slices.Contains(aliases, absoluteName) {
 		panic("octo: alias cannot match type absolute name")
@@ -88,7 +88,7 @@ func MarshallEvent(manager *Manager, event any) ([]byte, error) {
 	defer manager.mu.RUnlock()
 
 	typ := reflect.TypeOf(event)
-	absoluteName := AbsoluteTypeName(typ)
+	absoluteName := AbsoluteEventName(typ)
 
 	decl, has := manager.events[absoluteName]
 	if !has {
