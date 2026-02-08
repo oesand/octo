@@ -32,7 +32,7 @@ func TestAliasEvent_Panics(t *testing.T) {
 	}
 
 	assertPanic(func() { AliasEvent[EventX](manager) }, "empty aliases")
-	assertPanic(func() { AliasEvent[EventX](manager, AbsoluteTypeName(reflect.TypeFor[EventX]())) }, "alias = type name")
+	assertPanic(func() { AliasEvent[EventX](manager, AbsoluteEventName(reflect.TypeFor[EventX]())) }, "alias = type name")
 	AliasEvent[EventX](manager, "dup")
 	assertPanic(func() { AliasEvent[EventX](manager, "dup") }, "duplicate alias")
 }
