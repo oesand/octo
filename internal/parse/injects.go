@@ -2,14 +2,15 @@ package parse
 
 import (
 	"fmt"
-	"github.com/oesand/octo/internal/decl"
-	"github.com/oesand/octo/pm"
 	"go/ast"
 	"go/token"
 	"go/types"
-	"golang.org/x/tools/go/packages"
 	"path/filepath"
 	"strings"
+
+	"github.com/oesand/octo/internal/decl"
+	"github.com/oesand/octo/pm"
+	"golang.org/x/tools/go/packages"
 )
 
 const octogenModule = "github.com/oesand/octo/octogen"

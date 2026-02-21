@@ -3,7 +3,6 @@
   <component name="Go" enabled="true" />
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
-      <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/InjectAnyVariants" />
       <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/InjectErrors" />
       <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/ManyFilesInPackage" />
       <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/ManyFuncs" />

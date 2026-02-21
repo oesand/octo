@@ -3,8 +3,9 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/oesand/octo/internal"
-	"github.com/oesand/octo/internal/parse"
+
+	"github.com/oesand/octo/internal/v2/parse"
+
 	"log"
 	"os"
 	"path/filepath"
@@ -70,7 +71,7 @@ func main() {
 		log.Fatalf("error fail to get abs: %s", err.Error())
 	}
 
-	packages, warns, errs := parse.ParseInjects(currentModule, path)
+	packages, warns, errs := parse.Parse(currentModule, path)
 
 	if warns != nil {
 		sort.Strings(warns)
@@ -91,16 +92,16 @@ func main() {
 	}
 
 	if len(packages) != 1 {
-		var pkgNames []string
-		for _, pkg := range packages {
-			names = append(names, pkg.Name)
+		pkgNames := make([]string, len(packages))
+		for i, pkg := range packages {
+			pkgNames[i] = pkg.Name()
 		}
 		log.Fatalf("too many packages found: %v\n", pkgNames)
 	}
 
 	pkg := packages[0]
-	genPath := filepath.Join(pkg.Path, "want_gen.go")
-	err = internal.GenerateFile(genPath, pkg)
+	genPath := filepath.Join(pkg.Dir(), "want_gen.go")
+	err = os.WriteFile(genPath, pkg.Render(), 0666)
 	if err != nil {
 		log.Println(err)
 	} else {
