@@ -8,14 +8,14 @@ import (
 
 func ReturnStruct(typ typing.Renderer, fields map[string]ResolveRenderer) ReturnRenderer {
 	return &returnStructRenderer{
-		Type:    typ,
-		Entries: fields,
+		Type:   typ,
+		Fields: fields,
 	}
 }
 
 type returnStructRenderer struct {
-	Type    typing.Renderer
-	Entries map[string]ResolveRenderer
+	Type   typing.Renderer
+	Fields map[string]ResolveRenderer
 }
 
 func (r *returnStructRenderer) RenderReturn(ctx RenderContext, b *bytes.Buffer) {
@@ -23,7 +23,7 @@ func (r *returnStructRenderer) RenderReturn(ctx RenderContext, b *bytes.Buffer) 
 	b.WriteString(r.Type.Render(ctx, typing.CallOp))
 	b.WriteRune('{')
 
-	for name, renderer := range r.Entries {
+	for name, renderer := range r.Fields {
 		b.WriteString("\t\t\t")
 		b.WriteString(name)
 		b.WriteRune(':')

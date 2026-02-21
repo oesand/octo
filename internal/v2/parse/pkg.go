@@ -5,6 +5,7 @@ import (
 	"go/token"
 	"go/types"
 	"maps"
+	"path/filepath"
 	"slices"
 
 	"github.com/oesand/octo/internal/v2/injects"
@@ -105,8 +106,10 @@ func Parse(module, dir string) ([]*injects.PkgRenderer, []string, []error) {
 									}
 								}
 
-								inject, injectPkgs := parseCtx.ParseInjectFunc(injectKey, funcObj)
-								if parseCtx.NoErrs() && inject != nil {
+								inject, injectPkgs, err := parseInjectFunc(injectKey, funcObj)
+								if err != nil {
+									parseCtx.AddErr(funcObj.Pos(), err.Error())
+								} else {
 									declaredInjects = append(declaredInjects, inject)
 									for _, injectPkg := range injectPkgs {
 										renderCtx.Import(injectPkg)
@@ -146,7 +149,8 @@ func Parse(module, dir string) ([]*injects.PkgRenderer, []string, []error) {
 		}
 
 		if parseCtx.NoErrs() && len(funcs) > 0 {
-			outputs = append(outputs, injects.Pkg(pkg.Name, pkg.Dir, renderCtx, slices.Collect(maps.Values(funcs))))
+			pkgName := filepath.Base(pkgPath)
+			outputs = append(outputs, injects.Pkg(pkgName, pkg.Dir, renderCtx, slices.Collect(maps.Values(funcs))))
 		}
 	}
 

@@ -1,4 +1,4 @@
-package 
+package foo
 
 import (
 	"github.com/oesand/octo"

@@ -19,7 +19,7 @@ type renderCtx struct {
 }
 
 func (r *renderCtx) Import(pkg string) {
-	if pkg == "" || pkg == r.pkgPath {
+	if pkg == "" || pkg == r.pkgPath || pkg == OctoModule {
 		return
 	}
 
@@ -33,7 +33,7 @@ func (r *renderCtx) Import(pkg string) {
 	base := pkg[strings.LastIndexByte(pkg, '/')+1:]
 	for i := 0; ; i++ {
 		alias := base
-		if i > 0 {
+		if i > 0 || alias == OctoAlias {
 			alias = base + strconv.Itoa(i)
 		}
 		if _, ok := r.imports[alias]; ok {
@@ -49,6 +49,10 @@ func (r *renderCtx) Import(pkg string) {
 func (r *renderCtx) ImportAlias(pkg string) string {
 	if pkg == "" || pkg == r.pkgPath {
 		return ""
+	}
+
+	if pkg == OctoModule {
+		return OctoAlias
 	}
 
 	if len(r.importAliases) == 0 {

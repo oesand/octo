@@ -8,12 +8,8 @@ import (
 	"iter"
 	"strings"
 
+	"github.com/oesand/octo/internal/v2/injects"
 	"golang.org/x/tools/go/packages"
-)
-
-const (
-	octogenModule = "github.com/oesand/octo/octogen"
-	buildTag      = "octogen"
 )
 
 func newCtx(module, dir string) *parseContext {
@@ -23,7 +19,7 @@ func newCtx(module, dir string) *parseContext {
 		Mode: packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo |
 			packages.NeedImports | packages.NeedDeps,
 		BuildFlags: []string{
-			"-tags", buildTag,
+			"-tags", injects.BuildTag,
 		},
 		Fset: fileSet,
 		Dir:  dir,
@@ -71,7 +67,7 @@ func (ctx *parseContext) HasBuildTag(file *ast.File) bool {
 			text := strings.Trim(c.Text, "// ")
 
 			if (strings.HasPrefix(text, "+build") || strings.HasPrefix(text, "go:build")) &&
-				strings.Contains(text, buildTag) {
+				strings.Contains(text, injects.BuildTag) {
 				return true
 			}
 		}
@@ -88,7 +84,7 @@ func (ctx *parseContext) GetOctogenAlias(file *ast.File) string {
 		} else {
 			alias = path[strings.LastIndex(path, "/")+1:]
 		}
-		if path == octogenModule {
+		if path == injects.OctogenModule {
 			return alias
 		}
 	}

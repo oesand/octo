@@ -10,29 +10,26 @@ import (
 	"github.com/oesand/octo/pm"
 )
 
-func (ctx *parseContext) ParseInjectFunc(key string, funcObj *types.Func) (injects.InjectRenderer, []string) {
+func parseInjectFunc(key string, funcObj *types.Func) (injects.InjectRenderer, []string, error) {
 	funcSig := funcObj.Signature()
 
 	if funcSig.Results().Len() != 1 {
-		ctx.AddErr(funcObj.Pos(), "injecting function should return only one result")
-		return nil, nil
+		return nil, nil, errors.New("injecting function should return only one result")
 	}
 
 	var pkgs pm.Set[string]
 	resType := funcSig.Results().At(0)
 
-	returned, err := ctx.parseType(pkgs, resType.Type())
+	returned, err := parseType(pkgs, resType.Type())
 	if err != nil {
-		ctx.AddErr(funcObj.Pos(), "injecting function return: %s", err)
-		return nil, nil
+		return nil, nil, fmt.Errorf("injecting function return: %w", err)
 	}
 
 	generics := make([]typing.Renderer, funcSig.TypeParams().Len())
 	for i := 0; i < funcSig.TypeParams().Len(); i++ {
-		generic, err := ctx.parseType(pkgs, funcSig.TypeParams().At(i))
+		generic, err := parseType(pkgs, funcSig.TypeParams().At(i))
 		if err != nil {
-			ctx.AddErr(funcObj.Pos(), "injecting function generic[%d]: %s", i, err)
-			return nil, nil
+			return nil, nil, fmt.Errorf("injecting function generic[%d]: %w", i, err)
 		}
 		generics[i] = generic
 	}
@@ -40,10 +37,9 @@ func (ctx *parseContext) ParseInjectFunc(key string, funcObj *types.Func) (injec
 	params := make([]injects.ResolveRenderer, funcSig.Params().Len())
 	for i := 0; i < funcSig.Params().Len(); i++ {
 		prm := funcSig.Params().At(i)
-		param, err := ctx.parseType(pkgs, prm.Type())
+		param, err := parseType(pkgs, prm.Type())
 		if err != nil {
-			ctx.AddErr(funcObj.Pos(), "injecting function param[%d]: %s", i, err)
-			return nil, nil
+			return nil, nil, fmt.Errorf("injecting function param[%d]: %s", i, err)
 		}
 		params[i] = injects.Resolve("", param)
 	}
@@ -57,35 +53,35 @@ func (ctx *parseContext) ParseInjectFunc(key string, funcObj *types.Func) (injec
 
 	funcDecl := typing.NewNamed(funcPkg, funcName, generics)
 
-	return injects.Inject(key, returned, injects.ReturnFunc(funcDecl, params)), pkgs.Values()
+	return injects.Inject(key, returned, injects.ReturnFunc(funcDecl, params)), pkgs.Values(), nil
 }
 
-func (ctx *parseContext) parseType(pkgs pm.Set[string], typ types.Type) (typing.Renderer, error) {
+func parseType(pkgs pm.Set[string], typ types.Type) (typing.Renderer, error) {
 	switch t := typ.(type) {
 	case *types.Basic:
 		return typing.NewNamed("", t.Name(), nil), nil
 
 	case *types.Array:
-		elemTyp, err := ctx.parseType(pkgs, t.Elem())
+		elemTyp, err := parseType(pkgs, t.Elem())
 		if err != nil {
 			return nil, fmt.Errorf("[%d] > %w", t.Len(), err)
 		}
 		return typing.NewSlice(t.Len(), elemTyp), nil
 
 	case *types.Slice:
-		elemTyp, err := ctx.parseType(pkgs, t.Elem())
+		elemTyp, err := parseType(pkgs, t.Elem())
 		if err != nil {
 			return nil, fmt.Errorf("[] > %w", err)
 		}
 		return typing.NewSlice(0, elemTyp), nil
 
 	case *types.Map:
-		keyTyp, err := ctx.parseType(pkgs, t.Key())
+		keyTyp, err := parseType(pkgs, t.Key())
 		if err != nil {
 			return nil, fmt.Errorf("map[x] > %w", err)
 		}
 
-		elemTyp, err := ctx.parseType(pkgs, t.Elem())
+		elemTyp, err := parseType(pkgs, t.Elem())
 		if err != nil {
 			return nil, fmt.Errorf("map[]x > %w", err)
 		}
@@ -104,7 +100,7 @@ func (ctx *parseContext) parseType(pkgs pm.Set[string], typ types.Type) (typing.
 			level++
 		}
 
-		elemTyp, err := ctx.parseType(pkgs, elem)
+		elemTyp, err := parseType(pkgs, elem)
 		if err != nil {
 			return nil, fmt.Errorf("*%d > %w", level, err)
 		}
@@ -118,7 +114,7 @@ func (ctx *parseContext) parseType(pkgs pm.Set[string], typ types.Type) (typing.
 		for i := 0; i < t.TypeParams().Len(); i++ {
 			typeParam := t.TypeParams().At(i)
 
-			paramRenderer, err := ctx.parseType(pkgs, typeParam)
+			paramRenderer, err := parseType(pkgs, typeParam)
 			if err != nil {
 				return nil, fmt.Errorf("[%d] > %w", name, err)
 			}

@@ -7,6 +7,13 @@ import (
 	"github.com/oesand/octo/internal/v2/typing"
 )
 
+const (
+	OctogenModule = "github.com/oesand/octo/octogen"
+	BuildTag      = "octogen"
+	OctoModule    = "github.com/oesand/octo"
+	OctoAlias     = "octo"
+)
+
 type RenderContext interface {
 	typing.Context
 	Import(pkg string)
