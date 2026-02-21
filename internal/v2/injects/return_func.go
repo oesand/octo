@@ -26,7 +26,7 @@ func (r *returnFuncRenderer) RenderReturn(ctx RenderContext, b *bytes.Buffer) {
 
 	for _, renderer := range r.Entries {
 		b.WriteString("\t\t\t")
-		b.WriteString(renderer.RenderResolve(ctx))
+		renderer.RenderResolve(ctx, b)
 		b.WriteString(",\n")
 	}
 

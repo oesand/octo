@@ -6,20 +6,19 @@ import (
 	"github.com/oesand/octo/internal/v2/typing"
 )
 
-func ReturnStruct(typ typing.Renderer, fields map[string]ResolveRenderer) ReturnRenderer {
-	return &returnStructRenderer{
+func ResolveEmbedded(typ typing.Renderer, fields map[string]ResolveRenderer) ResolveRenderer {
+	return &resolveEmbeddedRenderer{
 		Type:   typ,
 		Fields: fields,
 	}
 }
 
-type returnStructRenderer struct {
+type resolveEmbeddedRenderer struct {
 	Type   typing.Renderer
 	Fields map[string]ResolveRenderer
 }
 
-func (r *returnStructRenderer) RenderReturn(ctx RenderContext, b *bytes.Buffer) {
-	b.WriteString("\t\treturn ")
+func (r *resolveEmbeddedRenderer) RenderResolve(ctx RenderContext, b *bytes.Buffer) {
 	b.WriteString(r.Type.Render(ctx, typing.CallOp))
 	b.WriteString("{\n")
 
@@ -31,5 +30,5 @@ func (r *returnStructRenderer) RenderReturn(ctx RenderContext, b *bytes.Buffer) 
 		b.WriteString(",\n")
 	}
 
-	b.WriteString("\t\t}\n")
+	b.WriteString("\t\t}")
 }

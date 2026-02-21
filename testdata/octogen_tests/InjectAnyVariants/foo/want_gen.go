@@ -5,6 +5,30 @@ import (
 )
 
 func IncludeAny(container *octo.Container) {
+	octo.Inject(container, func(container *octo.Container) *Struct {
+		return &Struct{
+			Base: Base{
+				In: octo.Resolve[Inf](container),
+			},
+		}
+	})
+	octo.InjectNamed(container, "key1", func(container *octo.Container) *Named {
+		return &Named{
+			Oth:   octo.Resolve[*Other](container),
+			Inf:   octo.Resolve[Inf](container),
+			SlInf: octo.ResolveAll[Inf](container),
+		}
+	})
+	octo.Inject(container, func(container *octo.Container) *Other {
+		return &Other{
+			SlInf: octo.ResolveAll[Inf](container),
+			Nm:    octo.ResolveNamed[*Named](container, "key1"),
+			Inf:   octo.Resolve[Inf](container),
+		}
+	})
+	octo.Inject(container, func(container *octo.Container) *NewestStruct {
+		return &NewestStruct{}
+	})
 	octo.Inject(container, func(container *octo.Container) *NewestStruct {
 		return NewStruct(
 			octo.Resolve[Inf](container),

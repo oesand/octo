@@ -29,5 +29,5 @@ type ReturnRenderer interface {
 }
 
 type ResolveRenderer interface {
-	RenderResolve(ctx RenderContext) string
+	RenderResolve(ctx RenderContext, b *bytes.Buffer)
 }

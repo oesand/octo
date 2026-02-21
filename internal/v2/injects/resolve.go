@@ -1,6 +1,8 @@
 package injects
 
 import (
+	"bytes"
+
 	"github.com/oesand/octo/internal/v2/typing"
 )
 
@@ -16,17 +18,19 @@ type resolveRenderer struct {
 	Type typing.Renderer
 }
 
-func (r *resolveRenderer) RenderResolve(ctx RenderContext) string {
+func (r *resolveRenderer) RenderResolve(ctx RenderContext, b *bytes.Buffer) {
 	if key := r.Key; key != "" {
 		renderedType := r.Type.Render(ctx, typing.DeclOp)
-		return "octo.ResolveNamed[" + renderedType + "](container, \"" + key + "\")"
+		b.WriteString("octo.ResolveNamed[" + renderedType + "](container, \"" + key + "\")")
+		return
 	}
 
 	if typ := r.Type; typ.Kind() == typing.SliceKind {
 		renderedType := typ.Child().Render(ctx, typing.DeclOp)
-		return "octo.ResolveAll[" + renderedType + "](container)"
+		b.WriteString("octo.ResolveAll[" + renderedType + "](container)")
+		return
 	}
 
 	renderedType := r.Type.Render(ctx, typing.DeclOp)
-	return "octo.Resolve[" + renderedType + "](container)"
+	b.WriteString("octo.Resolve[" + renderedType + "](container)")
 }

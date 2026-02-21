@@ -2,7 +2,13 @@ package foo
 
 type Inf interface{}
 
-type Struct struct{}
+type Base struct {
+	In Inf
+}
+
+type Struct struct {
+	Base
+}
 
 type Named struct {
 	Oth   *Other
