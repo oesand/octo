@@ -8,7 +8,7 @@ import (
 	"iter"
 	"strings"
 
-	"github.com/oesand/octo/internal/v2/injects"
+	"github.com/oesand/octo/internal/octogen/injects"
 	"golang.org/x/tools/go/packages"
 )
 

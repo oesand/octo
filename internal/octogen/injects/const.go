@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"iter"
 
-	"github.com/oesand/octo/internal/v2/typing"
+	"github.com/oesand/octo/internal/octogen/typing"
 )
 
 const (

@@ -2,66 +2,28 @@ package foo
 
 import (
 	"github.com/oesand/octo"
+	fnc "github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/fnc"
 )
 
-func IncludeAny(container *octo.Container) {
-	octo.Inject(container, func(container *octo.Container) *Struct {
-		return &Struct{
-			Base: Base{
-				SuperBase: SuperBase{
-					In: octo.Resolve[Inf](container),
-				},
-				In: octo.Resolve[Inf](container),
-			},
-		}
-	})
-	octo.InjectNamed(container, "key1", func(container *octo.Container) *Named {
-		return &Named{
-			Oth:   octo.Resolve[*Other](container),
-			Inf:   octo.Resolve[Inf](container),
-			SlInf: octo.ResolveAll[Inf](container),
-		}
-	})
-	octo.Inject(container, func(container *octo.Container) *Other {
-		return &Other{
-			Nm:    octo.ResolveNamed[*Named](container, "key1"),
-			Inf:   octo.Resolve[Inf](container),
-			SlInf: octo.ResolveAll[Inf](container),
-		}
-	})
-	octo.Inject(container, func(container *octo.Container) *NewestStruct {
-		return &NewestStruct{}
-	})
-	octo.Inject(container, func(container *octo.Container) *NewestStruct {
-		return NewStruct(
-			octo.Resolve[Inf](container),
-			octo.ResolveAll[Inf](container),
-			octo.Resolve[*Other](container),
-			octo.Resolve[Struct](container),
-			octo.Resolve[*Named](container),
+func IncludeFunc(container *octo.Container) {
+	octo.Inject(container, func(container *octo.Container) *fnc.Struct {
+		return fnc.NewPtrStruct(
+			octo.Resolve[*fnc.Linked](container),
 		)
 	})
-	octo.Inject(container, func(container *octo.Container) NewestStruct {
-		return NewStct(
-			octo.Resolve[Inf](container),
-			octo.ResolveAll[Inf](container),
-			octo.Resolve[Other](container),
-			octo.Resolve[*Struct](container),
-			octo.Resolve[Named](container),
+	octo.Inject(container, func(container *octo.Container) fnc.Struct {
+		return fnc.NewStruct(
+			octo.Resolve[fnc.Linked](container),
 		)
 	})
-	octo.InjectNamed(container, "key2", func(container *octo.Container) NewestStruct {
-		return NewStct(
-			octo.Resolve[Inf](container),
-			octo.ResolveAll[Inf](container),
-			octo.Resolve[Other](container),
-			octo.Resolve[*Struct](container),
-			octo.Resolve[Named](container),
+	octo.Inject(container, func(container *octo.Container) fnc.Iface {
+		return fnc.NewIface(
+			octo.Resolve[*fnc.Linked](container),
 		)
 	})
-	octo.Inject(container, func(container *octo.Container) Inf {
-		return NewInf(
-			octo.Resolve[*Struct](container),
+	octo.InjectNamed(container, "named", func(container *octo.Container) fnc.Iface {
+		return fnc.NewIface(
+			octo.Resolve[*fnc.Linked](container),
 		)
 	})
 }

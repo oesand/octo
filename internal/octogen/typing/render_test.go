@@ -3,7 +3,7 @@ package typing_test
 import (
 	"testing"
 
-	"github.com/oesand/octo/internal/v2/typing"
+	"github.com/oesand/octo/internal/octogen/typing"
 )
 
 type testCtx struct {

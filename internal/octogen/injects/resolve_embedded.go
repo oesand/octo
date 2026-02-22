@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/oesand/octo/internal/v2/typing"
+	"github.com/oesand/octo/internal/octogen/typing"
 )
 
 func ResolveEmbedded(typ typing.Renderer, fields map[string]ResolveRenderer, depth int) ResolveRenderer {

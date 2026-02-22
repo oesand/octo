@@ -1,40 +1,40 @@
 package parse
 
 import (
-	"errors"
 	"fmt"
 	"go/types"
+	"strings"
 
-	"github.com/oesand/octo/internal/v2/typing"
+	"github.com/oesand/octo/internal/octogen/typing"
 	"github.com/oesand/octo/pm"
 )
 
-func parseType(pkgs pm.Set[string], typ types.Type) (typing.Renderer, error) {
+func parseType(imports pm.Set[string], typ types.Type) (typing.Renderer, error) {
 	switch t := typ.(type) {
 	case *types.Basic:
 		return typing.NewNamed("", t.Name(), nil), nil
 
 	case *types.Array:
-		elemTyp, err := parseType(pkgs, t.Elem())
+		elemTyp, err := parseType(imports, t.Elem())
 		if err != nil {
 			return nil, fmt.Errorf("[%d] > %w", t.Len(), err)
 		}
 		return typing.NewSlice(t.Len(), elemTyp), nil
 
 	case *types.Slice:
-		elemTyp, err := parseType(pkgs, t.Elem())
+		elemTyp, err := parseType(imports, t.Elem())
 		if err != nil {
 			return nil, fmt.Errorf("[] > %w", err)
 		}
 		return typing.NewSlice(0, elemTyp), nil
 
 	case *types.Map:
-		keyTyp, err := parseType(pkgs, t.Key())
+		keyTyp, err := parseType(imports, t.Key())
 		if err != nil {
 			return nil, fmt.Errorf("map[x] > %w", err)
 		}
 
-		elemTyp, err := parseType(pkgs, t.Elem())
+		elemTyp, err := parseType(imports, t.Elem())
 		if err != nil {
 			return nil, fmt.Errorf("map[]x > %w", err)
 		}
@@ -53,9 +53,9 @@ func parseType(pkgs pm.Set[string], typ types.Type) (typing.Renderer, error) {
 			level++
 		}
 
-		elemTyp, err := parseType(pkgs, elem)
+		elemTyp, err := parseType(imports, elem)
 		if err != nil {
-			return nil, fmt.Errorf("*%d > %w", level, err)
+			return nil, fmt.Errorf("%s > %w", strings.Repeat("*", level), err)
 		}
 
 		return typing.NewPointer(level, elemTyp), nil
@@ -67,25 +67,44 @@ func parseType(pkgs pm.Set[string], typ types.Type) (typing.Renderer, error) {
 		for i := 0; i < t.TypeParams().Len(); i++ {
 			typeParam := t.TypeParams().At(i)
 
-			paramRenderer, err := parseType(pkgs, typeParam)
+			paramRenderer, err := parseType(imports, typeParam)
 			if err != nil {
-				return nil, fmt.Errorf("[%d] > %w", name, err)
+				return nil, fmt.Errorf("%s > %w", name, err)
 			}
 
 			generics[i] = paramRenderer
 			if paramPkg := typeParam.Obj().Pkg(); paramPkg != nil {
-				pkgs.Add(paramPkg.Path())
+				imports.Add(paramPkg.Path())
 			}
 		}
 
 		var pkgPath string
 		if pkg := t.Obj().Pkg(); pkg != nil {
 			pkgPath = pkg.Path()
-			pkgs.Add(pkgPath)
+			imports.Add(pkgPath)
 		}
 
 		return typing.NewNamed(pkgPath, name, generics), nil
 	}
 
-	return nil, errors.New("unknown type")
+	return nil, fmt.Errorf("not supported type: %s", typ.String())
+}
+
+func splitStructType(typ types.Type) (bool, *types.Named, *types.Struct, bool) {
+	ptr, isPtr := typ.(*types.Pointer)
+	if isPtr {
+		typ = ptr.Elem()
+	}
+
+	named, ok := typ.(*types.Named)
+	if !ok {
+		return false, nil, nil, false
+	}
+
+	structType, ok := named.Underlying().(*types.Struct)
+	if !ok {
+		return false, nil, nil, false
+	}
+
+	return isPtr, named, structType, true
 }

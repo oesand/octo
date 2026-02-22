@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"go/types"
 
-	"github.com/oesand/octo/internal/v2/injects"
-	"github.com/oesand/octo/internal/v2/typing"
+	"github.com/oesand/octo/internal/octogen/injects"
+	"github.com/oesand/octo/internal/octogen/typing"
 	"github.com/oesand/octo/pm"
 )
 
@@ -17,17 +17,17 @@ func parseInjectFunc(key string, funcObj *types.Func) (injects.InjectRenderer, [
 		return nil, nil, errors.New("function should return only one result")
 	}
 
-	var pkgs pm.Set[string]
+	imports := pm.Set[string]{}
 	resType := funcSig.Results().At(0)
 
-	returned, err := parseType(pkgs, resType.Type())
+	returned, err := parseType(imports, resType.Type())
 	if err != nil {
 		return nil, nil, fmt.Errorf("function return: %w", err)
 	}
 
 	generics := make([]typing.Renderer, funcSig.TypeParams().Len())
 	for i := 0; i < funcSig.TypeParams().Len(); i++ {
-		generic, err := parseType(pkgs, funcSig.TypeParams().At(i))
+		generic, err := parseType(imports, funcSig.TypeParams().At(i))
 		if err != nil {
 			return nil, nil, fmt.Errorf("function generic[%d]: %w", i, err)
 		}
@@ -37,9 +37,9 @@ func parseInjectFunc(key string, funcObj *types.Func) (injects.InjectRenderer, [
 	params := make([]injects.ResolveRenderer, funcSig.Params().Len())
 	for i := 0; i < funcSig.Params().Len(); i++ {
 		prm := funcSig.Params().At(i)
-		param, err := parseType(pkgs, prm.Type())
+		param, err := parseType(imports, prm.Type())
 		if err != nil {
-			return nil, nil, fmt.Errorf("function param[%s]: %w", prm.Name(), err)
+			return nil, nil, fmt.Errorf("function param '%s': %w", prm.Name(), err)
 		}
 		params[i] = injects.Resolve("", param)
 	}
@@ -48,10 +48,10 @@ func parseInjectFunc(key string, funcObj *types.Func) (injects.InjectRenderer, [
 	var funcPkg string
 	if fp := funcObj.Pkg(); fp != nil {
 		funcPkg = fp.Path()
-		pkgs.Add(funcPkg)
+		imports.Add(funcPkg)
 	}
 
 	funcDecl := typing.NewNamed(funcPkg, funcName, generics)
 
-	return injects.Inject(key, returned, injects.ReturnFunc(funcDecl, params)), pkgs.Values(), nil
+	return injects.Inject(key, returned, injects.ReturnFunc(funcDecl, params)), imports.Values(), nil
 }

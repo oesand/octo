@@ -4,7 +4,22 @@ import (
 	"go/types"
 )
 
-func implementsMediatrHandlers(named *types.Named) bool {
+//func scanForMediatrStructs(pkg *packages.Package) {
+//	for ident, obj := range pkg.TypesInfo.Defs {
+//		typeName, ok := obj.(*types.TypeName)
+//		if !ok {
+//			continue
+//		}
+//
+//		_, named, structType, ok := splitStructType(typeName.Type())
+//		if !ok || !isImplementsMediatrHandlers(named){
+//			continue
+//		}
+//	}
+//
+//}
+
+func isImplementsMediatrHandlers(named *types.Named) bool {
 	for fun := range named.Methods() {
 		switch fun.Name() {
 		case "Notification":

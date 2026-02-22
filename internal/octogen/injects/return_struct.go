@@ -3,7 +3,7 @@ package injects
 import (
 	"bytes"
 
-	"github.com/oesand/octo/internal/v2/typing"
+	"github.com/oesand/octo/internal/octogen/typing"
 )
 
 func ReturnStruct(typ typing.Renderer, fields map[string]ResolveRenderer) ReturnRenderer {

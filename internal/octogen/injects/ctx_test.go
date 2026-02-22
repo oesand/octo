@@ -36,7 +36,7 @@ func TestImports(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := NewCtx()
+			ctx := NewCtx("") // TODO: add test for ignore same package
 			for _, pkg := range tt.imports {
 				ctx.Import(pkg)
 			}

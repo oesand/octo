@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/oesand/octo/internal/v2/injects"
+	"github.com/oesand/octo/internal/octogen/injects"
 )
 
 func Parse(module, dir string) ([]*injects.PkgRenderer, []string, []error) {
@@ -106,12 +106,12 @@ func Parse(module, dir string) ([]*injects.PkgRenderer, []string, []error) {
 									}
 								}
 
-								inject, injectPkgs, err := parseInjectFunc(injectKey, funcObj)
+								inject, injectImports, err := parseInjectFunc(injectKey, funcObj)
 								if err != nil {
 									parseCtx.AddErr(funcObj.Pos(), err.Error())
 								} else {
 									declaredInjects = append(declaredInjects, inject)
-									for _, injectPkg := range injectPkgs {
+									for _, injectPkg := range injectImports {
 										renderCtx.Import(injectPkg)
 									}
 								}
@@ -143,12 +143,12 @@ func Parse(module, dir string) ([]*injects.PkgRenderer, []string, []error) {
 							}
 						}
 
-						inject, injectPkgs, err := parseInjectStruct(injectKey, structTyp)
+						inject, injectImports, err := parseInjectStruct(injectKey, structTyp)
 						if err != nil {
 							parseCtx.AddErr(exp.Pos(), err.Error())
 						} else {
 							declaredInjects = append(declaredInjects, inject)
-							for _, injectPkg := range injectPkgs {
+							for _, injectPkg := range injectImports {
 								renderCtx.Import(injectPkg)
 							}
 						}

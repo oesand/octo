@@ -48,9 +48,8 @@ func (r *PkgRenderer) Render() []byte {
 	for _, fn := range r.funcs {
 		b.WriteRune('\n')
 		fn.Render(r.ctx, &b)
+		b.WriteRune('\n')
 	}
-
-	b.WriteRune('\n')
 
 	return b.Bytes()
 }

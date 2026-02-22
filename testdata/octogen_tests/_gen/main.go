@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 
-	"github.com/oesand/octo/internal/v2/parse"
+	"github.com/oesand/octo/internal/octogen/parse"
 
 	"log"
 	"os"
