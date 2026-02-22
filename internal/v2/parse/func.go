@@ -14,7 +14,7 @@ func parseInjectFunc(key string, funcObj *types.Func) (injects.InjectRenderer, [
 	funcSig := funcObj.Signature()
 
 	if funcSig.Results().Len() != 1 {
-		return nil, nil, errors.New("injecting function should return only one result")
+		return nil, nil, errors.New("function should return only one result")
 	}
 
 	var pkgs pm.Set[string]
@@ -22,14 +22,14 @@ func parseInjectFunc(key string, funcObj *types.Func) (injects.InjectRenderer, [
 
 	returned, err := parseType(pkgs, resType.Type())
 	if err != nil {
-		return nil, nil, fmt.Errorf("injecting function return: %w", err)
+		return nil, nil, fmt.Errorf("function return: %w", err)
 	}
 
 	generics := make([]typing.Renderer, funcSig.TypeParams().Len())
 	for i := 0; i < funcSig.TypeParams().Len(); i++ {
 		generic, err := parseType(pkgs, funcSig.TypeParams().At(i))
 		if err != nil {
-			return nil, nil, fmt.Errorf("injecting function generic[%d]: %w", i, err)
+			return nil, nil, fmt.Errorf("function generic[%d]: %w", i, err)
 		}
 		generics[i] = generic
 	}
@@ -39,7 +39,7 @@ func parseInjectFunc(key string, funcObj *types.Func) (injects.InjectRenderer, [
 		prm := funcSig.Params().At(i)
 		param, err := parseType(pkgs, prm.Type())
 		if err != nil {
-			return nil, nil, fmt.Errorf("injecting function param[%d]: %w", i, err)
+			return nil, nil, fmt.Errorf("function param[%s]: %w", prm.Name(), err)
 		}
 		params[i] = injects.Resolve("", param)
 	}

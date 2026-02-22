@@ -2,13 +2,14 @@ package mc
 
 import (
 	"errors"
-	"github.com/oesand/octo"
-	"github.com/oesand/octo/pm"
 	"sync"
 	"time"
+
+	"github.com/oesand/octo"
+	"github.com/oesand/octo/pm"
 )
 
-const DefaultJanitorInterval = 5 * time.Minute
+const DefaultJanitorInterval = 1 * time.Minute
 
 // Inject injects a MemCache into the container if not already registered.
 func Inject(container *octo.Container, options ...Option) *MemCache {

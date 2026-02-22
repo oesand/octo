@@ -23,7 +23,7 @@ func parseInjectStruct(key string, typ types.Type) (injects.InjectRenderer, []st
 		return nil, nil, err
 	}
 
-	fields, err := parseStructFieldsRender(pkgs, structType)
+	fields, err := parseStructFieldsRender(pkgs, structType, 0)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -40,7 +40,7 @@ func parseStructTypeRender(pkgs pm.Set[string], named *types.Named) (typing.Rend
 	for i := 0; i < named.TypeParams().Len(); i++ {
 		generic, err := parseType(pkgs, named.TypeParams().At(i))
 		if err != nil {
-			return nil, fmt.Errorf("injecting struct generic[%d]: %w", i, err)
+			return nil, fmt.Errorf("struct generic[%d]: %w", i, err)
 		}
 		generics[i] = generic
 	}
@@ -55,7 +55,7 @@ func parseStructTypeRender(pkgs pm.Set[string], named *types.Named) (typing.Rend
 	return typing.NewNamed(structPkg, structName, generics), nil
 }
 
-func parseStructFieldsRender(pkgs pm.Set[string], structType *types.Struct) (map[string]injects.ResolveRenderer, error) {
+func parseStructFieldsRender(pkgs pm.Set[string], structType *types.Struct, embeddedDepth int) (map[string]injects.ResolveRenderer, error) {
 	fields := make(map[string]injects.ResolveRenderer, structType.NumFields())
 	for i := 0; i < structType.NumFields(); i++ {
 		field := structType.Field(i)
@@ -63,12 +63,12 @@ func parseStructFieldsRender(pkgs pm.Set[string], structType *types.Struct) (map
 			continue
 		}
 
+		fieldName := field.Name()
+
 		if field.Embedded() {
-			// TODO: fix tabbing for embedded fields
-			embeddedRenderer, err := parseEmbeddedFieldRenderer(pkgs, field.Type())
+			embeddedRenderer, err := parseEmbeddedFieldRenderer(pkgs, field.Type(), embeddedDepth+1)
 			if err != nil {
-				// TODO: add prefix
-				return nil, err
+				return nil, fmt.Errorf("embedded field[%s]: %w", fieldName, err)
 			}
 			if embeddedRenderer != nil {
 				fields[field.Name()] = embeddedRenderer
@@ -78,7 +78,7 @@ func parseStructFieldsRender(pkgs pm.Set[string], structType *types.Struct) (map
 
 		fieldRender, err := parseType(pkgs, field.Type())
 		if err != nil {
-			return nil, fmt.Errorf("injecting struct field[%d]: %w", i, err)
+			return nil, fmt.Errorf("struct field[%s]: %w", fieldName, err)
 		}
 
 		fieldTags := structType.Tag(i)
@@ -90,13 +90,13 @@ func parseStructFieldsRender(pkgs pm.Set[string], structType *types.Struct) (map
 			}
 		}
 
-		fields[field.Name()] = injects.Resolve(resolveKey, fieldRender)
+		fields[fieldName] = injects.Resolve(resolveKey, fieldRender)
 	}
 
 	return fields, nil
 }
 
-func parseEmbeddedFieldRenderer(pkgs pm.Set[string], typ types.Type) (injects.ResolveRenderer, error) {
+func parseEmbeddedFieldRenderer(pkgs pm.Set[string], typ types.Type, depth int) (injects.ResolveRenderer, error) {
 	isPtr, named, structType, err := splitStructType(typ)
 	if err != nil || isPtr {
 		return nil, nil
@@ -104,12 +104,12 @@ func parseEmbeddedFieldRenderer(pkgs pm.Set[string], typ types.Type) (injects.Re
 
 	structRender, err := parseStructTypeRender(pkgs, named)
 
-	fields, err := parseStructFieldsRender(pkgs, structType)
+	fields, err := parseStructFieldsRender(pkgs, structType, depth)
 	if err != nil {
 		return nil, err
 	}
 
-	return injects.ResolveEmbedded(structRender, fields), nil
+	return injects.ResolveEmbedded(structRender, fields, depth), nil
 }
 
 func splitStructType(typ types.Type) (bool, *types.Named, *types.Struct, error) {

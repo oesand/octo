@@ -2,7 +2,12 @@ package foo
 
 type Inf interface{}
 
+type SuperBase struct {
+	In Inf
+}
+
 type Base struct {
+	SuperBase
 	In Inf
 }
 
@@ -47,5 +52,5 @@ func NewStct(
 func NewInf(
 	st *Struct,
 ) Inf {
-	return *Other{}
+	return Other{}
 }
