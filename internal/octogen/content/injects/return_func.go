@@ -3,6 +3,7 @@ package injects
 import (
 	"bytes"
 
+	"github.com/oesand/octo/internal/octogen/content"
 	"github.com/oesand/octo/internal/octogen/typing"
 )
 
@@ -19,7 +20,7 @@ type returnFuncRenderer struct {
 	Entries  []ResolveRenderer
 }
 
-func (r *returnFuncRenderer) RenderReturn(ctx RenderContext, b *bytes.Buffer) {
+func (r *returnFuncRenderer) RenderReturn(ctx content.RenderContext, b *bytes.Buffer) {
 	b.WriteString("\t\treturn ")
 	b.WriteString(r.Decl.Render(ctx, typing.DeclOp))
 	b.WriteString("(\n")

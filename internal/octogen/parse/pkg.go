@@ -4,14 +4,13 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
-	"maps"
 	"path/filepath"
-	"slices"
 
-	"github.com/oesand/octo/internal/octogen/injects"
+	"github.com/oesand/octo/internal/octogen/content"
+	"github.com/oesand/octo/internal/octogen/content/injects"
 )
 
-func Parse(module, dir string) ([]*injects.PkgRenderer, []string, []error) {
+func Parse(module, dir string) ([]*content.PkgRenderer, []string, []error) {
 	parseCtx := newCtx(module, dir)
 
 	pkgs, err := parseCtx.Packages()
@@ -19,12 +18,12 @@ func Parse(module, dir string) ([]*injects.PkgRenderer, []string, []error) {
 		return nil, nil, []error{err}
 	}
 
-	var outputs []*injects.PkgRenderer
+	var outputs []*content.PkgRenderer
 	for pkg := range pkgs {
 		pkgPath := pkg.ID
-		renderCtx := injects.NewCtx(pkgPath)
+		renderCtx := content.NewCtx(pkgPath)
 
-		var funcs map[string]*injects.FuncRenderer
+		var blocks []content.FileBlockRenderer
 		for _, file := range pkg.Syntax {
 			hasBuildFlag := parseCtx.HasBuildTag(file)
 
@@ -63,7 +62,7 @@ func Parse(module, dir string) ([]*injects.PkgRenderer, []string, []error) {
 						continue
 					}
 
-					if name, ident := lookOctogenCall(call, octogenAlias); name != "" {
+					if name := lookOctogenCall(call.Fun, octogenAlias); name != "" {
 						switch name {
 						case "Inject":
 							{
@@ -71,12 +70,21 @@ func Parse(module, dir string) ([]*injects.PkgRenderer, []string, []error) {
 								var injectKey string
 								{ // Extract type info from Inject(...)
 									if len(call.Args) == 0 {
-										parseCtx.AddErr(ident.Pos(), "injecting function not passed")
+										parseCtx.AddErr(call.Pos(), "injecting function not passed")
 										continue
 									}
 									if len(call.Args) > 2 {
-										parseCtx.AddErr(ident.Pos(), "too many arguments, maximum two arguments")
+										parseCtx.AddErr(call.Pos(), "too many arguments, maximum two arguments")
 										continue
+									}
+
+									if len(call.Args) > 1 {
+										if bl, ok := call.Args[1].(*ast.BasicLit); ok && bl.Kind == token.STRING {
+											injectKey = bl.Value[1 : len(bl.Value)-1] // strip quotes
+										} else {
+											parseCtx.AddErr(call.Pos(), "unexpected second argument, support only string")
+											continue
+										}
 									}
 
 									var funcIdent *ast.Ident
@@ -86,29 +94,20 @@ func Parse(module, dir string) ([]*injects.PkgRenderer, []string, []error) {
 									case *ast.SelectorExpr:
 										funcIdent = et.Sel
 									default:
-										parseCtx.AddErr(ident.Pos(), "not supported injecting target")
+										parseCtx.AddErr(call.Pos(), "not supported injecting target")
 										continue
 									}
 
 									funcObj, ok = pkg.TypesInfo.ObjectOf(funcIdent).(*types.Func)
 									if !ok {
-										parseCtx.AddErr(ident.Pos(), "not supported injecting target")
+										parseCtx.AddErr(call.Pos(), "not supported injecting target")
 										continue
-									}
-
-									if len(call.Args) > 1 {
-										if bl, ok := call.Args[1].(*ast.BasicLit); ok && bl.Kind == token.STRING {
-											injectKey = bl.Value[1 : len(bl.Value)-1] // strip quotes
-										} else {
-											parseCtx.AddErr(ident.Pos(), "unexpected second argument, support only string")
-											continue
-										}
 									}
 								}
 
 								inject, injectImports, err := parseInjectFunc(injectKey, funcObj)
 								if err != nil {
-									parseCtx.AddErr(funcObj.Pos(), err.Error())
+									parseCtx.AddErr(call.Pos(), err.Error())
 								} else {
 									declaredInjects = append(declaredInjects, inject)
 									for _, injectPkg := range injectImports {
@@ -125,27 +124,34 @@ func Parse(module, dir string) ([]*injects.PkgRenderer, []string, []error) {
 						continue
 					}
 
-					if name, ident, exp := lookOctogenGenericCall(call, octogenAlias); name == "Inject" {
-						structTyp := pkg.TypesInfo.Types[exp].Type
+					if name, genericExp := lookOctogenGenericCall(call, octogenAlias); name == "Inject" {
+						var structType types.Type
 						var injectKey string
 						{
 							if len(call.Args) > 1 {
-								parseCtx.AddErr(ident.Pos(), "too many arguments, maximum one argument")
+								parseCtx.AddErr(call.Pos(), "too many arguments, maximum one argument")
 								continue
 							}
+
 							if len(call.Args) > 0 {
 								if bl, ok := call.Args[0].(*ast.BasicLit); ok && bl.Kind == token.STRING {
 									injectKey = bl.Value[1 : len(bl.Value)-1] // strip quotes
 								} else {
-									parseCtx.AddErr(ident.Pos(), "unexpected name argument, support only string")
+									parseCtx.AddErr(call.Pos(), "unexpected name argument, support only string")
 									continue
 								}
 							}
+
+							structType = pkg.TypesInfo.TypeOf(genericExp)
+							if structType == nil {
+								parseCtx.AddErr(call.Pos(), "unknown injecting type")
+								continue
+							}
 						}
 
-						inject, injectImports, err := parseInjectStruct(injectKey, structTyp)
+						inject, injectImports, err := parseInjectStruct(injectKey, structType)
 						if err != nil {
-							parseCtx.AddErr(exp.Pos(), err.Error())
+							parseCtx.AddErr(call.Pos(), err.Error())
 						} else {
 							declaredInjects = append(declaredInjects, inject)
 							for _, injectPkg := range injectImports {
@@ -160,47 +166,39 @@ func Parse(module, dir string) ([]*injects.PkgRenderer, []string, []error) {
 				if parseCtx.NoErrs() && len(declaredInjects) > 0 {
 					injectFuncName := injectFunc.Name.Name
 
-					if funcs == nil {
-						funcs = make(map[string]*injects.FuncRenderer, len(declaredInjects))
-					}
-
-					if fn, has := funcs[injectFuncName]; has {
-						fn.Injects = append(fn.Injects, declaredInjects...)
-					} else {
-						funcs[injectFuncName] = &injects.FuncRenderer{
-							Name:    injectFuncName,
-							Injects: declaredInjects,
-						}
-					}
+					blocks = append(blocks, injects.Func(injectFuncName, declaredInjects))
 				}
 			}
 		}
 
-		if parseCtx.NoErrs() && len(funcs) > 0 {
+		if parseCtx.NoErrs() && len(blocks) > 0 {
 			pkgName := filepath.Base(pkgPath)
-			outputs = append(outputs, injects.Pkg(pkgName, pkg.Dir, renderCtx, slices.Collect(maps.Values(funcs))))
+			outputs = append(outputs, content.Pkg(pkgName, pkg.Dir, renderCtx, blocks))
 		}
 	}
 
 	return outputs, parseCtx.warns, parseCtx.errs
 }
 
-func lookOctogenCall(exp *ast.CallExpr, octogenAlias string) (string, *ast.Ident) {
-	if sel, ok := exp.Fun.(*ast.SelectorExpr); ok {
-		if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == octogenAlias {
-			return sel.Sel.Name, ident
+func lookOctogenCall(exp ast.Expr, octogenAlias string) string {
+	if sel, ok := exp.(*ast.SelectorExpr); ok {
+		if idn, ok := sel.X.(*ast.Ident); !ok || idn.Name != octogenAlias {
+			return ""
 		}
+
+		return sel.Sel.Name
 	}
-	return "", nil
+	return ""
 }
 
-func lookOctogenGenericCall(exp *ast.CallExpr, octogenAlias string) (string, *ast.Ident, ast.Expr) {
+func lookOctogenGenericCall(exp *ast.CallExpr, octogenAlias string) (string, ast.Expr) {
 	if idx, ok := exp.Fun.(*ast.IndexExpr); ok {
-		if sel, ok := idx.X.(*ast.SelectorExpr); ok {
-			if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == octogenAlias {
-				return sel.Sel.Name, ident, idx.Index
-			}
+		funcName := lookOctogenCall(idx.X, octogenAlias)
+		if funcName == "" {
+			return "", nil
 		}
+
+		return funcName, idx.Index
 	}
-	return "", nil, nil
+	return "", nil
 }

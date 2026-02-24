@@ -6,7 +6,7 @@ import (
 	"go/types"
 	"strings"
 
-	"github.com/oesand/octo/internal/octogen/injects"
+	"github.com/oesand/octo/internal/octogen/content/injects"
 	"github.com/oesand/octo/internal/octogen/typing"
 	"github.com/oesand/octo/pm"
 )
@@ -36,9 +36,9 @@ func parseInjectStruct(key string, typ types.Type) (injects.InjectRenderer, []st
 }
 
 func parseStructTypeRender(imports pm.Set[string], named *types.Named) (typing.Renderer, error) {
-	generics := make([]typing.Renderer, named.TypeParams().Len())
-	for i := 0; i < named.TypeParams().Len(); i++ {
-		generic, err := parseType(imports, named.TypeParams().At(i))
+	generics := make([]typing.Renderer, named.TypeArgs().Len())
+	for i := 0; i < named.TypeArgs().Len(); i++ {
+		generic, err := parseType(imports, named.TypeArgs().At(i))
 		if err != nil {
 			return nil, fmt.Errorf("struct generic[%d]: %w", i, err)
 		}

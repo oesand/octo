@@ -63,9 +63,9 @@ func parseType(imports pm.Set[string], typ types.Type) (typing.Renderer, error) 
 	case *types.Named:
 		name := t.Obj().Name()
 
-		generics := make([]typing.Renderer, t.TypeParams().Len())
-		for i := 0; i < t.TypeParams().Len(); i++ {
-			typeParam := t.TypeParams().At(i)
+		generics := make([]typing.Renderer, t.TypeArgs().Len())
+		for i := 0; i < t.TypeArgs().Len(); i++ {
+			typeParam := t.TypeArgs().At(i)
 
 			paramRenderer, err := parseType(imports, typeParam)
 			if err != nil {
@@ -73,9 +73,6 @@ func parseType(imports pm.Set[string], typ types.Type) (typing.Renderer, error) 
 			}
 
 			generics[i] = paramRenderer
-			if paramPkg := typeParam.Obj().Pkg(); paramPkg != nil {
-				imports.Add(paramPkg.Path())
-			}
 		}
 
 		var pkgPath string

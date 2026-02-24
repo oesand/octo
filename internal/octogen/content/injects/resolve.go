@@ -3,6 +3,7 @@ package injects
 import (
 	"bytes"
 
+	"github.com/oesand/octo/internal/octogen/content"
 	"github.com/oesand/octo/internal/octogen/typing"
 )
 
@@ -18,7 +19,7 @@ type resolveRenderer struct {
 	Type typing.Renderer
 }
 
-func (r *resolveRenderer) RenderResolve(ctx RenderContext, b *bytes.Buffer) {
+func (r *resolveRenderer) RenderResolve(ctx content.RenderContext, b *bytes.Buffer) {
 	if key := r.Key; key != "" {
 		renderedType := r.Type.Render(ctx, typing.DeclOp)
 		b.WriteString("octo.ResolveNamed[" + renderedType + "](container, \"" + key + "\")")

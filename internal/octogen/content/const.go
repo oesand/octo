@@ -1,4 +1,4 @@
-package injects
+package content
 
 import (
 	"bytes"
@@ -20,14 +20,6 @@ type RenderContext interface {
 	Imports() iter.Seq2[string, string]
 }
 
-type InjectRenderer interface {
-	RenderInject(ctx RenderContext, b *bytes.Buffer)
-}
-
-type ReturnRenderer interface {
-	RenderReturn(ctx RenderContext, b *bytes.Buffer)
-}
-
-type ResolveRenderer interface {
-	RenderResolve(ctx RenderContext, b *bytes.Buffer)
+type FileBlockRenderer interface {
+	RenderFileBlock(ctx RenderContext, b *bytes.Buffer)
 }

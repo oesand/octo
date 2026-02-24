@@ -3,6 +3,7 @@ package injects
 import (
 	"bytes"
 
+	"github.com/oesand/octo/internal/octogen/content"
 	"github.com/oesand/octo/internal/octogen/typing"
 )
 
@@ -20,7 +21,7 @@ type injectRenderer struct {
 	Return ReturnRenderer
 }
 
-func (r *injectRenderer) RenderInject(ctx RenderContext, b *bytes.Buffer) {
+func (r *injectRenderer) RenderInject(ctx content.RenderContext, b *bytes.Buffer) {
 	returningRenderer := r.Type.Render(ctx, typing.DeclOp)
 
 	if r.Key != "" {

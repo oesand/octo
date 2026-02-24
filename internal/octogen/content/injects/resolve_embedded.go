@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strings"
 
+	"github.com/oesand/octo/internal/octogen/content"
 	"github.com/oesand/octo/internal/octogen/typing"
 )
 
@@ -21,7 +22,7 @@ type resolveEmbeddedRenderer struct {
 	Depth  int
 }
 
-func (r *resolveEmbeddedRenderer) RenderResolve(ctx RenderContext, b *bytes.Buffer) {
+func (r *resolveEmbeddedRenderer) RenderResolve(ctx content.RenderContext, b *bytes.Buffer) {
 	b.WriteString(r.Type.Render(ctx, typing.CallOp))
 	b.WriteString("{\n")
 

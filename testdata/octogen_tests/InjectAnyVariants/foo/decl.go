@@ -32,6 +32,6 @@ func IncludeEmbedded() {
 }
 
 func IncludeGeneric() {
-	octogen.Inject[generic.Struct]()
-	//octogen.Inject(generic.NewStruct)
+	octogen.Inject[*generic.Struct[int, *generic.Generic]]()
+	octogen.Inject(generic.NewStruct)
 }

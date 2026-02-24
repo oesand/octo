@@ -1,4 +1,4 @@
-package injects
+package content
 
 import (
 	"maps"
