@@ -3,11 +3,12 @@ package mediatr
 import (
 	"context"
 	"errors"
-	"github.com/oesand/octo"
-	"github.com/oesand/octo/backoff"
 	"reflect"
 	"sync"
 	"sync/atomic"
+
+	"github.com/oesand/octo"
+	"github.com/oesand/octo/backoff"
 )
 
 // Inject injects a Manager into the container if not already registered.
@@ -39,8 +40,8 @@ type Manager struct {
 
 	container       *octo.Container
 	events          map[string]*eventDecl
-	requestHandlers map[reflect.Type]func(context.Context, any) (any, error)
-	eventHandlers   map[reflect.Type][]func(context.Context, any) error
+	requestHandlers map[reflect.Type]handleRequest
+	eventHandlers   map[reflect.Type][]handleEvent
 
 	useBackOff atomic.Pointer[backoffConf]
 }
@@ -59,15 +60,12 @@ func (m *Manager) doInit() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	ctxType := reflect.TypeFor[context.Context]()
-	errorType := reflect.TypeFor[error]()
-
 	if m.requestHandlers == nil {
-		m.requestHandlers = make(map[reflect.Type]func(context.Context, any) (any, error))
+		m.requestHandlers = make(map[reflect.Type]handleRequest)
 	}
 
 	if m.eventHandlers == nil {
-		m.eventHandlers = make(map[reflect.Type][]func(context.Context, any) error)
+		m.eventHandlers = make(map[reflect.Type][]handleEvent)
 	}
 
 	if m.events == nil {
@@ -76,54 +74,20 @@ func (m *Manager) doInit() {
 
 	injects := octo.ResolveInjections(m.container)
 	for decl := range injects {
-		if method, ok := decl.Type().MethodByName("Notification"); ok &&
-			method.Type.NumIn() == 3 && method.Type.In(1).AssignableTo(ctxType) &&
-			method.Type.NumOut() == 1 && method.Type.Out(0).AssignableTo(errorType) {
-
-			eventType := method.Type.In(2)
+		if eventType, handler, ok := verifyEventHandler(decl); ok {
 			handlers, _ := m.eventHandlers[eventType]
-			m.eventHandlers[eventType] = append(handlers, func(ctx context.Context, ev any) error {
-				handler := decl.Value()
-				results := method.Func.Call([]reflect.Value{
-					reflect.ValueOf(handler),
-					reflect.ValueOf(ctx),
-					reflect.ValueOf(ev),
-				})
-
-				errVal := results[0].Interface()
-				if errVal != nil {
-					return errVal.(error)
-				}
-				return nil
-			})
+			m.eventHandlers[eventType] = append(handlers, handler)
 
 			m.registerEvent(eventType)
+			continue
 		}
 
-		if method, ok := decl.Type().MethodByName("Request"); ok &&
-			method.Type.NumIn() == 3 && method.Type.In(1).AssignableTo(ctxType) &&
-			method.Type.NumOut() == 2 && method.Type.Out(1).AssignableTo(errorType) {
-
-			requestType := method.Type.In(2)
+		if requestType, handler, ok := verifyRequestHandler(decl); ok {
 			if _, ok = m.requestHandlers[requestType]; ok {
 				continue
 			}
 
-			m.requestHandlers[requestType] = func(ctx context.Context, req any) (any, error) {
-				handler := decl.Value()
-				results := method.Func.Call([]reflect.Value{
-					reflect.ValueOf(handler),
-					reflect.ValueOf(ctx),
-					reflect.ValueOf(req),
-				})
-
-				errVal := results[1].Interface()
-				if errVal != nil {
-					return nil, errVal.(error)
-				}
-
-				return results[0].Interface(), nil
-			}
+			m.requestHandlers[requestType] = handler
 		}
 	}
 }

@@ -3,11 +3,12 @@ package mediatr
 import (
 	"context"
 	"errors"
-	"github.com/oesand/octo"
-	"github.com/oesand/octo/backoff"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/oesand/octo"
+	"github.com/oesand/octo/backoff"
 )
 
 // --- Test Fixtures ---
@@ -48,10 +49,9 @@ func (h *BlockHandler) Notification(ctx context.Context, e EventX) error {
 }
 
 type RequestX struct {
+	Request[ResponseX]
 	Value int
 }
-
-func (RequestX) Returns(ResponseX) {}
 
 type ResponseX struct {
 	Result int
