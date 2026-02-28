@@ -2,11 +2,11 @@ package pm
 
 import "sync"
 
-// KeyLock provides per-key locking similar to singleflight.Group,
+// KeyMutex provides per-key locking similar to singleflight.Group,
 // but without requiring a function callback.
 // Each key has its own internal *sync.Mutex.
 // Once all waiters for a key are done, its mutex is removed automatically.
-type KeyLock[K comparable] struct {
+type KeyMutex[K comparable] struct {
 	mu    sync.Mutex
 	locks map[K]*lockEntry
 }
@@ -17,7 +17,7 @@ type lockEntry struct {
 }
 
 // Lock acquires the lock for the given key.
-func (kl *KeyLock[K]) Lock(key K) {
+func (kl *KeyMutex[K]) Lock(key K) {
 	kl.mu.Lock()
 	if kl.locks == nil {
 		kl.locks = make(map[K]*lockEntry)
@@ -36,7 +36,7 @@ func (kl *KeyLock[K]) Lock(key K) {
 
 // TryLock attempts to acquire the lock for the given key without blocking.
 // It returns true if the lock was successfully acquired, and false otherwise.
-func (kl *KeyLock[K]) TryLock(key K) bool {
+func (kl *KeyMutex[K]) TryLock(key K) bool {
 	kl.mu.Lock()
 	if kl.locks == nil {
 		kl.locks = make(map[K]*lockEntry)
@@ -66,7 +66,7 @@ func (kl *KeyLock[K]) TryLock(key K) bool {
 }
 
 // Unlock releases the lock for the given key.
-func (kl *KeyLock[K]) Unlock(key K) {
+func (kl *KeyMutex[K]) Unlock(key K) {
 	kl.mu.Lock()
 	if kl.locks == nil {
 		kl.mu.Unlock()

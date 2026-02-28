@@ -39,7 +39,7 @@ func New(options ...Option) *MemCache {
 // MemCache represents a thread-safe in-memory cache with key-based locking.
 // Each entry expires automatically after a given duration and is purged by a janitor goroutine.
 type MemCache struct {
-	keyedMu pm.KeyLock[string]
+	keyedMu pm.KeyMutex[string]
 	entries sync.Map
 
 	usageEvictor usageEvictor

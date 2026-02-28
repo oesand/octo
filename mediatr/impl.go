@@ -15,7 +15,7 @@ var (
 	errorType = reflect.TypeFor[error]()
 )
 
-func verifyEventHandler(decl octo.ServiceDeclaration) (reflect.Type, handleEvent, bool) {
+func verifyEventHandler(decl octo.InjectDeclaration) (reflect.Type, handleEvent, bool) {
 	if method, ok := decl.Type().MethodByName("Notification"); ok &&
 		method.Type.NumIn() == 3 && method.Type.In(1).AssignableTo(ctxType) &&
 		method.Type.NumOut() == 1 && method.Type.Out(0).AssignableTo(errorType) {
@@ -41,7 +41,7 @@ func verifyEventHandler(decl octo.ServiceDeclaration) (reflect.Type, handleEvent
 	return nil, nil, false
 }
 
-func verifyRequestHandler(decl octo.ServiceDeclaration) (reflect.Type, handleRequest, bool) {
+func verifyRequestHandler(decl octo.InjectDeclaration) (reflect.Type, handleRequest, bool) {
 	if method, ok := decl.Type().MethodByName("Request"); ok &&
 		method.Type.NumIn() == 3 && method.Type.In(1).AssignableTo(ctxType) &&
 		method.Type.NumOut() == 2 && method.Type.Out(1).AssignableTo(errorType) {

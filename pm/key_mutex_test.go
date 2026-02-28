@@ -8,7 +8,7 @@ import (
 
 // Test basic Lock/Unlock behavior and cleanup.
 func TestKeyLock_Basic(t *testing.T) {
-	var kl KeyLock[string]
+	var kl KeyMutex[string]
 	key := "alpha"
 
 	kl.Lock(key)
@@ -24,7 +24,7 @@ func TestKeyLock_Basic(t *testing.T) {
 
 // Test that concurrent goroutines with the same key block sequentially.
 func TestKeyLock_SameKeyBlocks(t *testing.T) {
-	var kl KeyLock[string]
+	var kl KeyMutex[string]
 	key := "beta"
 
 	var order []string
@@ -65,7 +65,7 @@ func TestKeyLock_SameKeyBlocks(t *testing.T) {
 
 // Test that different keys can lock independently.
 func TestKeyLock_DifferentKeys(t *testing.T) {
-	var kl KeyLock[string]
+	var kl KeyMutex[string]
 	key1, key2 := "k1", "k2"
 
 	var wg sync.WaitGroup
@@ -111,7 +111,7 @@ func TestKeyLock_UnlockWithoutLockPanics(t *testing.T) {
 			t.Fatal("expected panic when unlocking uninitialized key")
 		}
 	}()
-	var kl KeyLock[string]
+	var kl KeyMutex[string]
 	kl.Unlock("ghost")
 }
 
@@ -122,7 +122,7 @@ func TestKeyLock_UnlockUnknownKeyPanics(t *testing.T) {
 			t.Fatal("expected panic when unlocking unknown key")
 		}
 	}()
-	var kl KeyLock[string]
+	var kl KeyMutex[string]
 	kl.Lock("a")
 	kl.Unlock("a")
 
@@ -132,7 +132,7 @@ func TestKeyLock_UnlockUnknownKeyPanics(t *testing.T) {
 
 // Test that after multiple waiters finish, key is removed from map.
 func TestKeyLock_CleanupAfterWaiters(t *testing.T) {
-	var kl KeyLock[string]
+	var kl KeyMutex[string]
 	key := "gamma"
 	var wg sync.WaitGroup
 
@@ -154,7 +154,7 @@ func TestKeyLock_CleanupAfterWaiters(t *testing.T) {
 
 // Test that generic type works with int keys.
 func TestKeyLock_IntKeys(t *testing.T) {
-	var kl KeyLock[int]
+	var kl KeyMutex[int]
 	key := 123
 
 	kl.Lock(key)
@@ -176,7 +176,7 @@ func TestKeyLock_ConcurrentStress(t *testing.T) {
 		iterations = 100
 	)
 
-	var kl KeyLock[int]
+	var kl KeyMutex[int]
 	counters := make(map[int]int)
 	var mu sync.Mutex // protect counters map
 
@@ -235,7 +235,7 @@ func TestKeyLock_ConcurrentStress(t *testing.T) {
 }
 
 func TestKeyLock_TryLock_Simple(t *testing.T) {
-	var kl KeyLock[string]
+	var kl KeyMutex[string]
 	key := "resource-1"
 
 	// First TryLock should succeed
@@ -258,7 +258,7 @@ func TestKeyLock_TryLock_Simple(t *testing.T) {
 }
 
 func TestKeyLock_TryLock_DifferentKeys(t *testing.T) {
-	var kl KeyLock[string]
+	var kl KeyMutex[string]
 
 	key1 := "alpha"
 	key2 := "beta"
@@ -276,7 +276,7 @@ func TestKeyLock_TryLock_DifferentKeys(t *testing.T) {
 }
 
 func TestKeyLock_TryLock_ConcurrentSameKey(t *testing.T) {
-	var kl KeyLock[string]
+	var kl KeyMutex[string]
 	key := "shared"
 
 	var wg sync.WaitGroup

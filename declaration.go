@@ -1,11 +1,12 @@
 package octo
 
 import (
+	"fmt"
 	"reflect"
 	"sync"
 )
 
-func newDeclLazy(typ reflect.Type, name string, provider func() any) ServiceDeclaration {
+func newDeclLazy(typ reflect.Type, name string, provider func() any) InjectDeclaration {
 	return &serviceDeclLazy{
 		rtyp:     typ,
 		name:     name,
@@ -36,6 +37,10 @@ func (decl *serviceDeclLazy) Value() any {
 	}
 
 	val := decl.provider()
+	if val == nil {
+		panic(fmt.Sprintf("provider (type: %s, name: %s) returned nil", decl.rtyp.String(), decl.name))
+	}
+
 	decl.built = true
 	decl.instance = val
 
@@ -46,7 +51,7 @@ func (decl *serviceDeclLazy) Type() reflect.Type {
 	return decl.rtyp
 }
 
-func newDeclValue(typ reflect.Type, name string, instance any) ServiceDeclaration {
+func newDeclValue(typ reflect.Type, name string, instance any) InjectDeclaration {
 	return &serviceDeclValue{
 		rtyp:     typ,
 		name:     name,

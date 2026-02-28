@@ -150,11 +150,11 @@ func TestResolveInjectionsIteration(t *testing.T) {
 	for decl := range iter {
 		switch count.Load() {
 		case 0:
-			if !DeclOfType[*MyService](decl) {
+			if !OfType[*MyService](decl) {
 				t.Fatalf("expected type MyService, got %T", decl.Value())
 			}
 		case 1:
-			if !DeclOfType[*OtherService](decl) {
+			if !OfType[*OtherService](decl) {
 				t.Fatalf("expected type OtherService, got %T", decl.Value())
 			}
 		case 2:
@@ -200,8 +200,8 @@ func TestCleanInjectionsRemovesSelected(t *testing.T) {
 	InjectValue(c, &OtherService{})
 
 	// Remove MyService
-	CleanInjections(c, func(s ServiceDeclaration) bool {
-		return DeclOfType[*MyService](s)
+	CleanInjections(c, func(s InjectDeclaration) bool {
+		return OfType[*MyService](s)
 	})
 
 	var count atomic.Int32
@@ -209,7 +209,7 @@ func TestCleanInjectionsRemovesSelected(t *testing.T) {
 	for decl := range iter {
 		switch count.Load() {
 		case 0:
-			if !DeclOfType[*OtherService](decl) {
+			if !OfType[*OtherService](decl) {
 				t.Fatalf("expected type OtherService, got %T", decl.Value())
 			}
 		case 1:
@@ -340,7 +340,7 @@ func TestResolveInjectionsIterationByInterface(t *testing.T) {
 	for decl := range iter {
 		switch count.Load() {
 		case 0:
-			if !DeclOfType[ServiceInterface](decl) {
+			if !OfType[ServiceInterface](decl) {
 				t.Fatalf("expected type ServiceInterface, got %T", decl.Value())
 			} else {
 				if decl.Value().(*MyService).name != "foo" {
@@ -348,7 +348,7 @@ func TestResolveInjectionsIterationByInterface(t *testing.T) {
 				}
 			}
 		case 1:
-			if !DeclOfType[ServiceInterface](decl) {
+			if !OfType[ServiceInterface](decl) {
 				t.Fatalf("expected type ServiceInterface, got %T", decl.Value())
 			} else {
 				if decl.Value().(*MyService).name != "bar" {
@@ -374,8 +374,8 @@ func TestCleanInjectionsRemovesSelectedByInterface(t *testing.T) {
 	InjectValue(c, &MyService{name: "bar"})
 
 	// Remove MyService
-	CleanInjections(c, func(s ServiceDeclaration) bool {
-		return DeclOfType[ServiceInterface](s)
+	CleanInjections(c, func(s InjectDeclaration) bool {
+		return OfType[ServiceInterface](s)
 	})
 
 	var count atomic.Int32
@@ -383,7 +383,7 @@ func TestCleanInjectionsRemovesSelectedByInterface(t *testing.T) {
 	for decl := range iter {
 		switch count.Load() {
 		case 0:
-			if !DeclOfType[*OtherService](decl) {
+			if !OfType[*OtherService](decl) {
 				t.Fatalf("expected type OtherService, got %T", decl.Value())
 			}
 		case 1:

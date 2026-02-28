@@ -6,9 +6,9 @@ import "reflect"
 // It is used for lazy resolution of dependencies.
 type Provider[T any] func(*Container) T
 
-// ServiceDeclaration represents a registered service in the container.
+// InjectDeclaration represents a registered service in the container.
 // It exposes the service's name, its concrete value, and its type.
-type ServiceDeclaration interface {
+type InjectDeclaration interface {
 	// Name returns the optional name of the service.
 	Name() string
 
@@ -19,9 +19,9 @@ type ServiceDeclaration interface {
 	Type() reflect.Type
 }
 
-// DeclOfType checks if a ServiceDeclaration is compatible with type T.
+// OfType checks if a InjectDeclaration is compatible with type T.
 // Returns true if the service's type is assignable to T (implements interface or same type).
-func DeclOfType[T any](decl ServiceDeclaration) bool {
+func OfType[T any](decl InjectDeclaration) bool {
 	return decl.Type().AssignableTo(reflect.TypeFor[T]())
 }
 

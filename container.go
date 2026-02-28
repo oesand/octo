@@ -17,8 +17,11 @@ func New() *Container {
 
 // Container stores service declarations and provides thread-safe access.
 type Container struct {
-	mu       sync.RWMutex
-	services []ServiceDeclaration
+	mu      sync.RWMutex
+	injects []InjectDeclaration
+
+	resolveCacheMu sync.RWMutex
+	resolveCache   map[reflect.Type]InjectDeclaration
 }
 
 func containerOrDefault(container *Container) *Container {
@@ -30,22 +33,42 @@ func containerOrDefault(container *Container) *Container {
 
 func (c *Container) addValue(typ reflect.Type, name string, value any) {
 	decl := newDeclValue(typ, name, value)
-	c.services = append(c.services, decl)
+	c.injects = append(c.injects, decl)
 }
 
 func (c *Container) addProvider(typ reflect.Type, name string, provider func() any) {
 	decl := newDeclLazy(typ, name, provider)
-	c.services = append(c.services, decl)
+	c.injects = append(c.injects, decl)
 }
 
-func (c *Container) resolve(typ reflect.Type, name string) ServiceDeclaration {
-	for _, inject := range c.services {
+func (c *Container) resolve(typ reflect.Type, name string) InjectDeclaration {
+	if name == "" {
+		c.resolveCacheMu.RLock()
+		if len(c.resolveCache) > 0 {
+			if decl, ok := c.resolveCache[typ]; ok {
+				return decl
+			}
+		}
+		c.resolveCacheMu.RUnlock()
+	}
+
+	for _, inject := range c.injects {
 		if !inject.Type().AssignableTo(typ) {
 			continue
 		}
 
 		if name != "" && inject.Name() != name {
 			continue
+		}
+
+		if name == "" {
+			c.resolveCacheMu.Lock()
+			if c.resolveCache == nil {
+				c.resolveCache = make(map[reflect.Type]InjectDeclaration)
+			}
+
+			c.resolveCache[typ] = inject
+			c.resolveCacheMu.Unlock()
 		}
 
 		return inject
@@ -56,6 +79,11 @@ func (c *Container) resolve(typ reflect.Type, name string) ServiceDeclaration {
 
 // TryInjectValue registers a concrete value into the container if not registered.
 func TryInjectValue[T any](container *Container, value T) bool {
+	return TryInjectNamedValue[T](container, "", value)
+}
+
+// TryInjectNamedValue registers a concrete value with a name into the container if not registered.
+func TryInjectNamedValue[T any](container *Container, name string, value T) bool {
 	typ := reflect.TypeFor[T]()
 	ensureCanInjectType(typ)
 
@@ -63,11 +91,11 @@ func TryInjectValue[T any](container *Container, value T) bool {
 	container.mu.Lock()
 	defer container.mu.Unlock()
 
-	if container.resolve(typ, "") != nil {
+	if container.resolve(typ, name) != nil {
 		return false
 	}
 
-	container.addValue(typ, "", value)
+	container.addValue(typ, name, value)
 	return true
 }
 
@@ -90,6 +118,11 @@ func InjectNamedValue[T any](container *Container, name string, value T) {
 
 // TryInject registers a provider function to lazily resolve a type if not registered.
 func TryInject[T any](container *Container, provider Provider[T]) bool {
+	return TryInjectNamed(container, "", provider)
+}
+
+// TryInjectNamed registers a named provider function to lazily resolve a type if not registered.
+func TryInjectNamed[T any](container *Container, name string, provider Provider[T]) bool {
 	typ := reflect.TypeFor[T]()
 	ensureCanInjectType(typ)
 
@@ -97,11 +130,11 @@ func TryInject[T any](container *Container, provider Provider[T]) bool {
 	container.mu.Lock()
 	defer container.mu.Unlock()
 
-	if container.resolve(typ, "") != nil {
+	if container.resolve(typ, name) != nil {
 		return false
 	}
 
-	container.addProvider(typ, "", func() any {
+	container.addProvider(typ, name, func() any {
 		return provider(container)
 	})
 	return true
@@ -178,14 +211,14 @@ func resolve[T any](container *Container, name string, required bool) T {
 	return res
 }
 
-// ResolveInjections returns an iterator over all registered services in the container.
-func ResolveInjections(container *Container) iter.Seq[ServiceDeclaration] {
+// ResolveInjections returns an iterator over all registered injects in the container.
+func ResolveInjections(container *Container) iter.Seq[InjectDeclaration] {
 	container = containerOrDefault(container)
-	return func(yield func(ServiceDeclaration) bool) {
+	return func(yield func(InjectDeclaration) bool) {
 		container.mu.RLock()
 		defer container.mu.RUnlock()
 
-		for _, service := range container.services {
+		for _, service := range container.injects {
 			if !yield(service) {
 				break
 			}
@@ -193,7 +226,7 @@ func ResolveInjections(container *Container) iter.Seq[ServiceDeclaration] {
 	}
 }
 
-// ResolveAll returns an iterator over registered services in the container
+// ResolveAll returns an iterator over registered injects in the container
 // if the service's type is assignable to T (implements interface or same type).
 func ResolveAll[T any](container *Container) []T {
 	injects := ResolveInjections(container)
@@ -209,16 +242,17 @@ func ResolveAll[T any](container *Container) []T {
 
 // CleanInjections removes all service declarations that match the selector function.
 // Do not use octo.* functions inside selector, this may cause deadlocks
-func CleanInjections(container *Container, selector func(decl ServiceDeclaration) bool) {
+func CleanInjections(container *Container, selector func(decl InjectDeclaration) bool) {
 	container = containerOrDefault(container)
 	container.mu.Lock()
 	defer container.mu.Unlock()
 
-	services := make([]ServiceDeclaration, 0, len(container.services))
-	for _, decl := range container.services {
+	injects := make([]InjectDeclaration, 0, len(container.injects))
+	for _, decl := range container.injects {
 		if !selector(decl) {
-			services = append(services, decl)
+			injects = append(injects, decl)
 		}
 	}
-	container.services = services
+	container.injects = injects
+	container.resolveCache = nil
 }
