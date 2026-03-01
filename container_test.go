@@ -200,7 +200,7 @@ func TestCleanInjectionsRemovesSelected(t *testing.T) {
 	InjectValue(c, &OtherService{})
 
 	// Remove MyService
-	CleanInjections(c, func(s InjectDeclaration) bool {
+	CleanInjections(c, func(s Declaration) bool {
 		return OfType[*MyService](s)
 	})
 
@@ -374,7 +374,7 @@ func TestCleanInjectionsRemovesSelectedByInterface(t *testing.T) {
 	InjectValue(c, &MyService{name: "bar"})
 
 	// Remove MyService
-	CleanInjections(c, func(s InjectDeclaration) bool {
+	CleanInjections(c, func(s Declaration) bool {
 		return OfType[ServiceInterface](s)
 	})
 

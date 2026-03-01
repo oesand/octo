@@ -1,4 +1,4 @@
-package mediatr
+package typing
 
 import (
 	"reflect"
@@ -42,8 +42,8 @@ func TestAbsoluteTypeName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := AbsoluteEventName(tt.typ); got != tt.want {
-				t.Errorf("AbsoluteEventName() = %v, want %v", got, tt.want)
+			if got := AbsoluteTypeName(tt.typ); got != tt.want {
+				t.Errorf("AbsoluteTypeName() = %v, want %v", got, tt.want)
 			}
 		})
 	}
