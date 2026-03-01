@@ -24,12 +24,15 @@ type injectRenderer struct {
 func (r *injectRenderer) RenderInject(ctx content.RenderContext, b *bytes.Buffer) {
 	returningRenderer := r.Type.Render(ctx, typing.DeclOp)
 
-	if r.Key != "" {
+	switch r.Key {
+	case "":
+		b.WriteString("\tocto.Inject(container, ")
+	case "~":
+		b.WriteString("\tocto.TryInject(container, ")
+	default:
 		b.WriteString("\tocto.InjectNamed(container, \"")
 		b.WriteString(r.Key)
 		b.WriteString("\", ")
-	} else {
-		b.WriteString("\tocto.Inject(container, ")
 	}
 
 	b.WriteString("func(container *octo.Container) ")

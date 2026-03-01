@@ -17,27 +17,27 @@ func TestAbsoluteTypeName(t *testing.T) {
 		{
 			name: "Struct",
 			typ:  reflect.TypeFor[SimpleStruct](),
-			want: "github.com/oesand/octo/mediatr.SimpleStruct",
+			want: "github.com/oesand/octo/internal/typing.SimpleStruct",
 		},
 		{
 			name: "*Struct",
 			typ:  reflect.TypeFor[*SimpleStruct](),
-			want: "*github.com/oesand/octo/mediatr.SimpleStruct",
+			want: "*github.com/oesand/octo/internal/typing.SimpleStruct",
 		},
 		{
 			name: "**Struct",
 			typ:  reflect.TypeFor[**SimpleStruct](),
-			want: "**github.com/oesand/octo/mediatr.SimpleStruct",
+			want: "**github.com/oesand/octo/internal/typing.SimpleStruct",
 		},
 		{
 			name: "GenericStruct[SimpleStruct]",
 			typ:  reflect.TypeFor[GenericStruct[SimpleStruct]](),
-			want: "github.com/oesand/octo/mediatr.GenericStruct[github.com/oesand/octo/mediatr.SimpleStruct]",
+			want: "github.com/oesand/octo/internal/typing.GenericStruct[github.com/oesand/octo/internal/typing.SimpleStruct]",
 		},
 		{
 			name: "*GenericStruct[*SimpleStruct]",
 			typ:  reflect.TypeFor[*GenericStruct[*SimpleStruct]](),
-			want: "*github.com/oesand/octo/mediatr.GenericStruct[*github.com/oesand/octo/mediatr.SimpleStruct]",
+			want: "*github.com/oesand/octo/internal/typing.GenericStruct[*github.com/oesand/octo/internal/typing.SimpleStruct]",
 		},
 	}
 	for _, tt := range tests {

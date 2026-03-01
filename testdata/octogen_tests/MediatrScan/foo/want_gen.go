@@ -6,31 +6,29 @@ package foo
 
 import (
 	"github.com/oesand/octo"
-	als1 "github.com/oesand/octo/testdata/octogen_tests/MediatrScan/foo/notif"
-	als2 "github.com/oesand/octo/testdata/octogen_tests/MediatrScan/foo/notif_func"
-	als3 "github.com/oesand/octo/testdata/octogen_tests/MediatrScan/foo/req"
-	als4 "github.com/oesand/octo/testdata/octogen_tests/MediatrScan/foo/req_func"
+	als1 "github.com/oesand/octo/testdata/octogen_tests/MediatrScan/foo/notification"
+	als2 "github.com/oesand/octo/testdata/octogen_tests/MediatrScan/foo/notification_new"
+	als3 "github.com/oesand/octo/testdata/octogen_tests/MediatrScan/foo/request"
+	als4 "github.com/oesand/octo/testdata/octogen_tests/MediatrScan/foo/request_new"
 )
 
 func IncludeAny(container *octo.Container) {
-    octo.TryInject(container, func(container *octo.Container) *als3.ReqHandler {
-        return &als3.ReqHandler{
-            Stct:octo.Resolve[*als3.Struct](container),
-            Oth:octo.Resolve[*als3.Other](container),
-        }
-    })
-    octo.TryInject(container, func(container *octo.Container) *als1.NotifHandler {
-        return &als1.NotifHandler{
-            Stct:octo.Resolve[*als3.Struct](container),
-            Oth:octo.Resolve[*als3.Other](container),
-        }
-    })
-    octo.TryInject(container, func(container *octo.Container) *als2.NotifHandler {
-        return als2.NewNotifHandler(
-        )
-    })
-    octo.TryInject(container, func(container *octo.Container) *als4.ReqHandler {
-        return als4.NewReqHandler(
-        )
-    })
+	octo.TryInject(container, func(container *octo.Container) *als3.ReqHandler {
+		return &als3.ReqHandler{
+			Stct: octo.Resolve[*als3.Struct](container),
+			Oth:  octo.Resolve[*als3.Other](container),
+		}
+	})
+	octo.TryInject(container, func(container *octo.Container) *als1.NotifHandler {
+		return &als1.NotifHandler{
+			Stct: octo.Resolve[*als3.Struct](container),
+			Oth:  octo.Resolve[*als3.Other](container),
+		}
+	})
+	octo.TryInject(container, func(container *octo.Container) *als2.NotifHandler {
+		return als2.NewNotifHandler()
+	})
+	octo.TryInject(container, func(container *octo.Container) *als4.ReqHandler {
+		return als4.NewReqHandler()
+	})
 }

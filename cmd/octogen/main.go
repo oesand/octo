@@ -3,12 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/oesand/octo/internal"
-	"github.com/oesand/octo/internal/parse"
-	"golang.org/x/mod/modfile"
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/oesand/octo/internal"
+	"github.com/oesand/octo/internal/octogen/parse"
+	"golang.org/x/mod/modfile"
 )
 
 const UsageText = "Usage of octogen: \n" +
@@ -40,7 +41,7 @@ func main() {
 
 func runGen(genName string) {
 	if filepath.Ext(genName) != ".go" {
-		log.Fatalf("'%s' is not a .go file name", genName)
+		genName = genName + ".go"
 	}
 
 	if !internal.IsFileExist("./go.mod") {
@@ -57,7 +58,7 @@ func runGen(genName string) {
 		log.Fatalln("unknown module name in go.mod")
 	}
 
-	packages, warns, errs := parse.ParseInjects(currentModule, ".")
+	packages, warns, errs := parse.Parse(currentModule, ".")
 
 	if warns != nil {
 		for _, warn := range warns {
@@ -75,13 +76,15 @@ func runGen(genName string) {
 	genFileName := filepath.Clean(genName)
 
 	for _, pkg := range packages {
-		filePath := filepath.Join(pkg.Path, genFileName)
+		filePath := filepath.Join(pkg.Dir(), genFileName)
 
-		log.Printf("generating package %s \n", pkg.Path)
+		log.Printf("generating package '%s'...\n", pkg.Path())
 
-		err := internal.GenerateFile(filePath, pkg)
+		err = os.WriteFile(filePath, pkg.Render(), 0666)
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("failed to generate: %s\n", err)
+		} else {
+			log.Println("generated successfully")
 		}
 	}
 

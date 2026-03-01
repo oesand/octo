@@ -8,13 +8,12 @@ import (
 	"github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/embedded"
 	"github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/fnc"
 	"github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/generic"
-	"github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/stct"
 )
 
 func IncludeStruct() {
-	octogen.Inject[*stct.Linked]()
-	octogen.Inject[*stct.Named]("named")
-	octogen.Inject[*stct.Struct]()
+	octogen.Inject[*Linked]()
+	octogen.Inject[*Named]("named")
+	octogen.Inject[*Struct]()
 }
 
 func IncludeFunc() {

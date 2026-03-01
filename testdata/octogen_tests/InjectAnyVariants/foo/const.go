@@ -1,4 +1,4 @@
-package stct
+package foo
 
 import (
 	"github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/embedded"

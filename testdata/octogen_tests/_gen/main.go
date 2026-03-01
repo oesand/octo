@@ -92,11 +92,11 @@ func main() {
 	}
 
 	if len(packages) != 1 {
-		pkgNames := make([]string, len(packages))
+		foundPkgs := make([]string, len(packages))
 		for i, pkg := range packages {
-			pkgNames[i] = pkg.Name()
+			foundPkgs[i] = pkg.Path()
 		}
-		log.Fatalf("too many packages found: %v\n", pkgNames)
+		log.Fatalf("too many packages found: %v\n", foundPkgs)
 	}
 
 	pkg := packages[0]

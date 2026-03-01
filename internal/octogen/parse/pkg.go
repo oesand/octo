@@ -4,7 +4,6 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
-	"path/filepath"
 
 	"github.com/oesand/octo/internal/octogen/content"
 	"github.com/oesand/octo/internal/octogen/content/injects"
@@ -28,7 +27,6 @@ func Parse(module, dir string) ([]*content.PkgRenderer, []string, []error) {
 			hasBuildFlag := parseCtx.HasBuildTag(file)
 
 			if !hasBuildFlag {
-				// todo : add parse mediatr
 				continue
 			}
 
@@ -62,62 +60,53 @@ func Parse(module, dir string) ([]*content.PkgRenderer, []string, []error) {
 						continue
 					}
 
-					if name := lookOctogenCall(call.Fun, octogenAlias); name != "" {
-						switch name {
-						case "Inject":
-							{
-								var funcObj *types.Func
-								var injectKey string
-								{ // Extract type info from Inject(...)
-									if len(call.Args) == 0 {
-										parseCtx.AddErr(call.Pos(), "injecting function not passed")
-										continue
-									}
-									if len(call.Args) > 2 {
-										parseCtx.AddErr(call.Pos(), "too many arguments, maximum two arguments")
-										continue
-									}
+					if name := lookOctogenCall(call.Fun, octogenAlias); name != "Inject" {
+						var funcObj *types.Func
+						var injectKey string
+						{ // Extract type info from Inject(...)
+							if len(call.Args) == 0 {
+								parseCtx.AddErr(call.Pos(), "injecting function not passed")
+								continue
+							}
+							if len(call.Args) > 2 {
+								parseCtx.AddErr(call.Pos(), "too many arguments, maximum two arguments")
+								continue
+							}
 
-									if len(call.Args) > 1 {
-										if bl, ok := call.Args[1].(*ast.BasicLit); ok && bl.Kind == token.STRING {
-											injectKey = bl.Value[1 : len(bl.Value)-1] // strip quotes
-										} else {
-											parseCtx.AddErr(call.Pos(), "unexpected second argument, support only string")
-											continue
-										}
-									}
-
-									var funcIdent *ast.Ident
-									switch et := call.Args[0].(type) {
-									case *ast.Ident:
-										funcIdent = et
-									case *ast.SelectorExpr:
-										funcIdent = et.Sel
-									default:
-										parseCtx.AddErr(call.Pos(), "not supported injecting target")
-										continue
-									}
-
-									funcObj, ok = pkg.TypesInfo.ObjectOf(funcIdent).(*types.Func)
-									if !ok {
-										parseCtx.AddErr(call.Pos(), "not supported injecting target")
-										continue
-									}
-								}
-
-								inject, injectImports, err := parseInjectFunc(injectKey, funcObj)
-								if err != nil {
-									parseCtx.AddErr(call.Pos(), err.Error())
+							if len(call.Args) > 1 {
+								if bl, ok := call.Args[1].(*ast.BasicLit); ok && bl.Kind == token.STRING {
+									injectKey = bl.Value[1 : len(bl.Value)-1] // strip quotes
 								} else {
-									declaredInjects = append(declaredInjects, inject)
-									for _, injectPkg := range injectImports {
-										renderCtx.Import(injectPkg)
-									}
+									parseCtx.AddErr(call.Pos(), "unexpected second argument, support only string")
+									continue
 								}
 							}
-						case "ScanForMediatr":
-							{
 
+							var funcIdent *ast.Ident
+							switch et := call.Args[0].(type) {
+							case *ast.Ident:
+								funcIdent = et
+							case *ast.SelectorExpr:
+								funcIdent = et.Sel
+							default:
+								parseCtx.AddErr(call.Pos(), "not supported injecting target")
+								continue
+							}
+
+							funcObj, ok = pkg.TypesInfo.ObjectOf(funcIdent).(*types.Func)
+							if !ok {
+								parseCtx.AddErr(call.Pos(), "not supported injecting target")
+								continue
+							}
+						}
+
+						inject, injectImports, err := parseInjectFunc(injectKey, funcObj)
+						if err != nil {
+							parseCtx.AddError(call.Pos(), err)
+						} else {
+							declaredInjects = append(declaredInjects, inject)
+							for _, injectPkg := range injectImports {
+								renderCtx.Import(injectPkg)
 							}
 						}
 
@@ -151,7 +140,7 @@ func Parse(module, dir string) ([]*content.PkgRenderer, []string, []error) {
 
 						inject, injectImports, err := parseInjectStruct(injectKey, structType)
 						if err != nil {
-							parseCtx.AddErr(call.Pos(), err.Error())
+							parseCtx.AddError(call.Pos(), err)
 						} else {
 							declaredInjects = append(declaredInjects, inject)
 							for _, injectPkg := range injectImports {
@@ -172,8 +161,7 @@ func Parse(module, dir string) ([]*content.PkgRenderer, []string, []error) {
 		}
 
 		if parseCtx.NoErrs() && len(blocks) > 0 {
-			pkgName := filepath.Base(pkgPath)
-			outputs = append(outputs, content.Pkg(pkgName, pkg.Dir, renderCtx, blocks))
+			outputs = append(outputs, content.Pkg(pkgPath, pkg.Dir, renderCtx, blocks))
 		}
 	}
 

@@ -17,7 +17,3 @@ type Struct[T any, T1 any] struct {
 	Base[T1]
 	Link *Linked[T]
 }
-
-func NewStruct(lnk *Linked[int]) *Struct[int, *Generic] {
-	return new(Struct[int, *Generic])
-}

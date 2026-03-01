@@ -2,7 +2,7 @@ package foo
 
 import (
 	"context"
-	"github.com/oesand/octo/mediatr"
+	"github.com/oesand/octo/mediator"
 )
 
 type Event struct{}
@@ -13,7 +13,7 @@ type Resp struct{}
 // Basic structs
 
 type Iface interface {
-	mediatr.NotificationHandler[*Event]
+	mediator.NotificationHandler[*Event]
 }
 
 type NotFuncStruct struct{}

@@ -106,6 +106,12 @@ func (ctx *parseContext) AddErr(pos token.Pos, format string, a ...any) {
 	ctx.errs = append(ctx.errs, errors.New(ctx.formatMsg(pos, format, a...)))
 }
 
+func (ctx *parseContext) AddError(pos token.Pos, err error) {
+	ps := ctx.fset.Position(pos)
+
+	ctx.errs = append(ctx.errs, fmt.Errorf("%s:%d: %w", ps.Filename, ps.Line, err))
+}
+
 func (ctx *parseContext) NoErrs() bool {
 	return len(ctx.errs) == 0
 }

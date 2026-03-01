@@ -8,22 +8,21 @@ import (
 	embedded "github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/embedded"
 	fnc "github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/fnc"
 	generic "github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/generic"
-	stct "github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/stct"
 )
 
 func IncludeStruct(container *octo.Container) {
-	octo.Inject(container, func(container *octo.Container) *stct.Linked {
-		return &stct.Linked{}
+	octo.Inject(container, func(container *octo.Container) *Linked {
+		return &Linked{}
 	})
-	octo.InjectNamed(container, "named", func(container *octo.Container) *stct.Named {
-		return &stct.Named{}
+	octo.InjectNamed(container, "named", func(container *octo.Container) *Named {
+		return &Named{}
 	})
-	octo.Inject(container, func(container *octo.Container) *stct.Struct {
-		return &stct.Struct{
-			Linked:       octo.Resolve[*stct.Linked](container),
-			Named:        octo.ResolveNamed[*stct.Named](container, "named"),
+	octo.Inject(container, func(container *octo.Container) *Struct {
+		return &Struct{
 			NestedFunc:   octo.Resolve[*fnc.Struct](container),
 			NestedStruct: octo.Resolve[*embedded.Struct](container),
+			Linked:       octo.Resolve[*Linked](container),
+			Named:        octo.ResolveNamed[*Named](container, "named"),
 		}
 	})
 }
@@ -61,10 +60,10 @@ func IncludeEmbedded(container *octo.Container) {
 	octo.Inject(container, func(container *octo.Container) *embedded.Struct {
 		return &embedded.Struct{
 			Base: embedded.Base{
+				Link: octo.Resolve[*embedded.Linked](container),
 				Super: embedded.Super{
 					Link: octo.Resolve[*embedded.Linked](container),
 				},
-				Link: octo.Resolve[*embedded.Linked](container),
 			},
 			Link: octo.Resolve[*embedded.Linked](container),
 			If:   octo.Resolve[embedded.Iface](container),

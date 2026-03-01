@@ -1,8 +1,8 @@
-package req_func
+package request_new
 
 import (
 	"context"
-	"github.com/oesand/octo/testdata/octogen_tests/MediatrScan/foo/req"
+	"github.com/oesand/octo/testdata/octogen_tests/MediatrScan/foo/request"
 )
 
 func NewReqHandler() *ReqHandler {
@@ -18,8 +18,8 @@ type ExampleResp struct {
 }
 
 type ReqHandler struct {
-	Stct *req.Struct
-	Oth  *req.Other
+	Stct *request.Struct
+	Oth  *request.Other
 }
 
 func (*ReqHandler) Request(ctx context.Context, r *ExampleReq) (*ExampleResp, error) {
