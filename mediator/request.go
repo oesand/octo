@@ -1,12 +1,10 @@
-package mediatr
+package mediator
 
-import "context"
+import (
+	"context"
 
-// EventHandler defines a contract for handling notifications of type TEvent.
-// Unlike requests, notifications do not return responses; instead, they are "fire-and-forget".
-type EventHandler[TEvent any] interface {
-	Notification(ctx context.Context, event TEvent) error
-}
+	"github.com/oesand/octo"
+)
 
 // Request [T any] interface declares a "Returns(T)" method
 // Implementations of Request must define a Returns() method
@@ -29,4 +27,16 @@ type Request[T any] interface {
 type RequestHandler[TRequest Request[TResponse], TResponse any] interface {
 	// Request processes the input request and returns a response or error.
 	Request(ctx context.Context, request TRequest) (TResponse, error)
+}
+
+// Send resolves a RequestHandler for the given request/response types from the container
+// and calls its Request method. This is the entry point for executing a request.
+func Send[TRequest Request[TResponse], TResponse any](
+	manager *Manager,
+	ctx context.Context,
+	request TRequest,
+) (TResponse, error) {
+	manager.ensureInit()
+	handler := octo.Resolve[RequestHandler[TRequest, TResponse]](manager.container)
+	return handler.Request(ctx, request)
 }
