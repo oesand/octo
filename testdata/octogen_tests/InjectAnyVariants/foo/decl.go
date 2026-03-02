@@ -31,6 +31,24 @@ func IncludeEmbedded() {
 }
 
 func IncludeGeneric() {
-	octogen.Inject[*generic.Struct[int, *generic.Generic]]()
+	octogen.Inject[*generic.EmbeddedStruct[int, *generic.Generic]]()
 	octogen.Inject(generic.NewStruct)
+
+	octogen.Inject[generic.Struct[int]]()
+	octogen.Inject[generic.Struct[string]]()
+	octogen.Inject[generic.Struct[bool]]()
+
+	octogen.Inject[generic.Struct[[20]int]]()
+	octogen.Inject[generic.Struct[[10]string]]()
+	octogen.Inject[generic.Struct[[5]Struct]]()
+
+	octogen.Inject[generic.Struct[[]int]]()
+	octogen.Inject[generic.Struct[[]string]]()
+	octogen.Inject[generic.Struct[[]Struct]]()
+
+	octogen.Inject[generic.Struct[map[string]int]]()
+	octogen.Inject[generic.Struct[map[string]Struct]]()
+
+	octogen.Inject[generic.Struct[Struct]]()
+	octogen.Inject[generic.Struct[*Struct]]()
 }

@@ -5,6 +5,6 @@ package foo
 
 import "github.com/oesand/octo/octogen"
 
-func IncludeAny() {
-	octogen.ScanForMediatr()
+func IncludeAny[T any](v int) int {
+	octogen.Inject[Struct]()
 }

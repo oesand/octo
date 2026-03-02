@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/oesand/octo/internal"
 	"github.com/oesand/octo/internal/octogen/parse"
@@ -192,6 +191,7 @@ func main() {
 		if !internal.IsFileExist(wantGenPath) {
 			errf("no want_gen file or expected error logs file for package '%s'", pkg.Path())
 		}
+
 		wantContent, err := os.ReadFile(wantGenPath)
 		if err != nil {
 			errf("cannot want_gen file err: %s", err)
@@ -203,7 +203,13 @@ func main() {
 			log.Println("generated content correct")
 		} else {
 			errf("unexpected generated content")
-			fmt.Print(string(actualContent))
+
+			log.Printf("want len: %d, actual len: %d\n", len(wantContent), len(actualContent))
+			diff := bytes.Compare(wantContent, actualContent)
+			log.Printf("diff index: %d\n", diff)
+
+			log.Printf("want:   %q\n", wantContent)
+			log.Printf("actual: %q\n", actualContent)
 		}
 	}
 

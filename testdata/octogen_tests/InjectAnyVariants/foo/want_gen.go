@@ -5,31 +5,34 @@ package foo
 
 import (
 	"github.com/oesand/octo"
-	embedded "github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/embedded"
 	fnc "github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/fnc"
+	embedded "github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/embedded"
 	generic "github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/generic"
 )
 
-func IncludeStruct(container *octo.Container) {
-	octo.Inject(container, func(container *octo.Container) *Linked {
-		return &Linked{}
+func IncludeEmbedded(container *octo.Container) {
+	octo.Inject(container, func(container *octo.Container) *embedded.Linked {
+		return &embedded.Linked{
+		}
 	})
-	octo.InjectNamed(container, "named", func(container *octo.Container) *Named {
-		return &Named{}
-	})
-	octo.Inject(container, func(container *octo.Container) *Struct {
-		return &Struct{
-			NestedFunc:   octo.Resolve[*fnc.Struct](container),
-			NestedStruct: octo.Resolve[*embedded.Struct](container),
-			Linked:       octo.Resolve[*Linked](container),
-			Named:        octo.ResolveNamed[*Named](container, "named"),
+	octo.Inject(container, func(container *octo.Container) *embedded.Struct {
+		return &embedded.Struct{
+			If:octo.Resolve[embedded.Iface](container),
+			Base:embedded.Base{
+				Link:octo.Resolve[*embedded.Linked](container),
+				Super:embedded.Super{
+					Link:octo.Resolve[*embedded.Linked](container),
+				},
+			},
+			Link:octo.Resolve[*embedded.Linked](container),
 		}
 	})
 }
 
 func IncludeFunc(container *octo.Container) {
 	octo.Inject(container, func(container *octo.Container) *fnc.Linked {
-		return &fnc.Linked{}
+		return &fnc.Linked{
+		}
 	})
 	octo.Inject(container, func(container *octo.Container) *fnc.Struct {
 		return fnc.NewPtrStruct(
@@ -53,39 +56,144 @@ func IncludeFunc(container *octo.Container) {
 	})
 }
 
-func IncludeEmbedded(container *octo.Container) {
-	octo.Inject(container, func(container *octo.Container) *embedded.Linked {
-		return &embedded.Linked{}
-	})
-	octo.Inject(container, func(container *octo.Container) *embedded.Struct {
-		return &embedded.Struct{
-			Base: embedded.Base{
-				Link: octo.Resolve[*embedded.Linked](container),
-				Super: embedded.Super{
-					Link: octo.Resolve[*embedded.Linked](container),
+func IncludeGeneric(container *octo.Container) {
+	octo.Inject(container, func(container *octo.Container) *generic.EmbeddedStruct[int, *generic.Generic] {
+		return &generic.EmbeddedStruct[int, *generic.Generic]{
+			Struct:generic.Struct[*generic.Generic]{
+				Super:generic.Super[*generic.Generic]{
+					Link:octo.Resolve[*generic.Linked[*generic.Generic]](container),
 				},
+				Link:octo.Resolve[*generic.Linked[*generic.Generic]](container),
 			},
-			Link: octo.Resolve[*embedded.Linked](container),
-			If:   octo.Resolve[embedded.Iface](container),
+			Link:octo.Resolve[*generic.Linked[int]](container),
+		}
+	})
+	octo.Inject(container, func(container *octo.Container) *generic.EmbeddedStruct[int, *generic.Generic] {
+		return generic.NewStruct(
+			octo.Resolve[*generic.Linked[int]](container),
+		)
+	})
+	octo.Inject(container, func(container *octo.Container) generic.Struct[int] {
+		return generic.Struct[int]{
+			Link:octo.Resolve[*generic.Linked[int]](container),
+			Super:generic.Super[int]{
+				Link:octo.Resolve[*generic.Linked[int]](container),
+			},
+		}
+	})
+	octo.Inject(container, func(container *octo.Container) generic.Struct[string] {
+		return generic.Struct[string]{
+			Super:generic.Super[string]{
+				Link:octo.Resolve[*generic.Linked[string]](container),
+			},
+			Link:octo.Resolve[*generic.Linked[string]](container),
+		}
+	})
+	octo.Inject(container, func(container *octo.Container) generic.Struct[bool] {
+		return generic.Struct[bool]{
+			Super:generic.Super[bool]{
+				Link:octo.Resolve[*generic.Linked[bool]](container),
+			},
+			Link:octo.Resolve[*generic.Linked[bool]](container),
+		}
+	})
+	octo.Inject(container, func(container *octo.Container) generic.Struct[[20]int] {
+		return generic.Struct[[20]int]{
+			Super:generic.Super[[20]int]{
+				Link:octo.Resolve[*generic.Linked[[20]int]](container),
+			},
+			Link:octo.Resolve[*generic.Linked[[20]int]](container),
+		}
+	})
+	octo.Inject(container, func(container *octo.Container) generic.Struct[[10]string] {
+		return generic.Struct[[10]string]{
+			Super:generic.Super[[10]string]{
+				Link:octo.Resolve[*generic.Linked[[10]string]](container),
+			},
+			Link:octo.Resolve[*generic.Linked[[10]string]](container),
+		}
+	})
+	octo.Inject(container, func(container *octo.Container) generic.Struct[[5]Struct] {
+		return generic.Struct[[5]Struct]{
+			Super:generic.Super[[5]Struct]{
+				Link:octo.Resolve[*generic.Linked[[5]Struct]](container),
+			},
+			Link:octo.Resolve[*generic.Linked[[5]Struct]](container),
+		}
+	})
+	octo.Inject(container, func(container *octo.Container) generic.Struct[[]int] {
+		return generic.Struct[[]int]{
+			Super:generic.Super[[]int]{
+				Link:octo.Resolve[*generic.Linked[[]int]](container),
+			},
+			Link:octo.Resolve[*generic.Linked[[]int]](container),
+		}
+	})
+	octo.Inject(container, func(container *octo.Container) generic.Struct[[]string] {
+		return generic.Struct[[]string]{
+			Super:generic.Super[[]string]{
+				Link:octo.Resolve[*generic.Linked[[]string]](container),
+			},
+			Link:octo.Resolve[*generic.Linked[[]string]](container),
+		}
+	})
+	octo.Inject(container, func(container *octo.Container) generic.Struct[[]Struct] {
+		return generic.Struct[[]Struct]{
+			Super:generic.Super[[]Struct]{
+				Link:octo.Resolve[*generic.Linked[[]Struct]](container),
+			},
+			Link:octo.Resolve[*generic.Linked[[]Struct]](container),
+		}
+	})
+	octo.Inject(container, func(container *octo.Container) generic.Struct[map[string]int] {
+		return generic.Struct[map[string]int]{
+			Super:generic.Super[map[string]int]{
+				Link:octo.Resolve[*generic.Linked[map[string]int]](container),
+			},
+			Link:octo.Resolve[*generic.Linked[map[string]int]](container),
+		}
+	})
+	octo.Inject(container, func(container *octo.Container) generic.Struct[map[string]Struct] {
+		return generic.Struct[map[string]Struct]{
+			Super:generic.Super[map[string]Struct]{
+				Link:octo.Resolve[*generic.Linked[map[string]Struct]](container),
+			},
+			Link:octo.Resolve[*generic.Linked[map[string]Struct]](container),
+		}
+	})
+	octo.Inject(container, func(container *octo.Container) generic.Struct[Struct] {
+		return generic.Struct[Struct]{
+			Super:generic.Super[Struct]{
+				Link:octo.Resolve[*generic.Linked[Struct]](container),
+			},
+			Link:octo.Resolve[*generic.Linked[Struct]](container),
+		}
+	})
+	octo.Inject(container, func(container *octo.Container) generic.Struct[*Struct] {
+		return generic.Struct[*Struct]{
+			Super:generic.Super[*Struct]{
+				Link:octo.Resolve[*generic.Linked[*Struct]](container),
+			},
+			Link:octo.Resolve[*generic.Linked[*Struct]](container),
 		}
 	})
 }
 
-func IncludeGeneric(container *octo.Container) {
-	octo.Inject(container, func(container *octo.Container) *generic.Struct[int, *generic.Generic] {
-		return &generic.Struct[int, *generic.Generic]{
-			Base: generic.Base[*generic.Generic]{
-				Super: generic.Super[*generic.Generic]{
-					Link: octo.Resolve[*generic.Linked[*generic.Generic]](container),
-				},
-				Link: octo.Resolve[*generic.Linked[*generic.Generic]](container),
-			},
-			Link: octo.Resolve[*generic.Linked[int]](container),
+func IncludeStruct(container *octo.Container) {
+	octo.Inject(container, func(container *octo.Container) *Linked {
+		return &Linked{
 		}
 	})
-	octo.Inject(container, func(container *octo.Container) *generic.Struct[int, *generic.Generic] {
-		return generic.NewStruct(
-			octo.Resolve[*generic.Linked[int]](container),
-		)
+	octo.InjectNamed(container, "named", func(container *octo.Container) *Named {
+		return &Named{
+		}
+	})
+	octo.Inject(container, func(container *octo.Container) *Struct {
+		return &Struct{
+			Linked:octo.Resolve[*Linked](container),
+			Named:octo.ResolveNamed[*Named](container, "named"),
+			NestedFunc:octo.Resolve[*fnc.Struct](container),
+			NestedStruct:octo.Resolve[*embedded.Struct](container),
+		}
 	})
 }

@@ -1,6 +1,7 @@
 package parse
 
 import (
+	"errors"
 	"fmt"
 	"go/types"
 	"strings"
@@ -12,6 +13,10 @@ import (
 func parseType(imports pm.Set[string], typ types.Type) (typing.Renderer, error) {
 	switch t := typ.(type) {
 	case *types.Basic:
+		if t.Kind() == types.Invalid {
+			return nil, errors.New("unresolved type reference (sometimes `go mod tidy` can help if all okay)")
+		}
+
 		return typing.NewNamed("", t.Name(), nil), nil
 
 	case *types.Array:

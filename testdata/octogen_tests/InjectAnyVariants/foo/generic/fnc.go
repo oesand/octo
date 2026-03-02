@@ -1,5 +1,5 @@
 package generic
 
-func NewStruct(lnk *Linked[int]) *Struct[int, *Generic] {
-	return new(Struct[int, *Generic])
+func NewStruct(lnk *Linked[int]) *EmbeddedStruct[int, *Generic] {
+	return new(EmbeddedStruct[int, *Generic])
 }

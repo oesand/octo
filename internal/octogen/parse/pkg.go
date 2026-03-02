@@ -4,6 +4,7 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"sort"
 
 	"github.com/oesand/octo/internal/octogen/content"
 	"github.com/oesand/octo/internal/octogen/content/injects"
@@ -60,7 +61,7 @@ func Parse(module, dir string) ([]*content.PkgRenderer, []string, []error) {
 						continue
 					}
 
-					if name := lookOctogenCall(call.Fun, octogenAlias); name != "Inject" {
+					if name := lookOctogenCall(call.Fun, octogenAlias); name == "Inject" {
 						var funcObj *types.Func
 						var injectKey string
 						{ // Extract type info from Inject(...)
@@ -161,6 +162,10 @@ func Parse(module, dir string) ([]*content.PkgRenderer, []string, []error) {
 		}
 
 		if parseCtx.NoErrs() && len(blocks) > 0 {
+			sort.Slice(blocks, func(i, j int) bool {
+				return blocks[i].Key() < blocks[j].Key()
+			})
+
 			outputs = append(outputs, content.Pkg(pkgPath, pkg.Dir, renderCtx, blocks))
 		}
 	}

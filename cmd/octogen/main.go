@@ -62,7 +62,7 @@ func runGen(genName string) {
 
 	if warns != nil {
 		for _, warn := range warns {
-			log.Println("[WARN]:", warn)
+			log.Println("!", warn)
 		}
 	}
 

@@ -21,5 +21,6 @@ type RenderContext interface {
 }
 
 type FileBlockRenderer interface {
+	Key() string
 	RenderFileBlock(ctx RenderContext, b *bytes.Buffer)
 }

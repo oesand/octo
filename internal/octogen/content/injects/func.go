@@ -18,6 +18,10 @@ type funcRenderer struct {
 	Injects []InjectRenderer
 }
 
+func (r *funcRenderer) Key() string {
+	return "func:" + r.Name
+}
+
 func (r *funcRenderer) RenderFileBlock(ctx content.RenderContext, b *bytes.Buffer) {
 	b.WriteString("func ")
 	b.WriteString(r.Name)
