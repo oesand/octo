@@ -1,23 +1,27 @@
-package typing
+package mediator
 
 import "reflect"
 
-// AbsoluteTypeName returns the "absolute" name of a type including:
+// AbsoluteEventName returns the "absolute" name of a type including:
 // 1. The package import path (PkgPath)
 // 2. The struct name
 // 3. The pointer levels (e.g., "*", "**", etc.)
 //
 // Examples:
 //   - type MyStruct struct{} in package "github.com/user/project/pkg"
-//   - AbsoluteTypeName(MyStruct)       => "github.com/user/project/pkg/MyStruct"
-//   - AbsoluteTypeName(*MyStruct)      => "*github.com/user/project/pkg/MyStruct"
-//   - AbsoluteTypeName(**MyStruct)     => "**github.com/user/project/pkg/MyStruct"
-func AbsoluteTypeName(typ reflect.Type) string {
+//   - AbsoluteEventName(MyStruct)       => "github.com/user/project/pkg/MyStruct"
+//   - AbsoluteEventName(*MyStruct)      => "*github.com/user/project/pkg/MyStruct"
+//   - AbsoluteEventName(**MyStruct)     => "**github.com/user/project/pkg/MyStruct"
+func AbsoluteEventName(typ reflect.Type) string {
 	target := typ
 	var ptrLevel string
 	for target.Kind() == reflect.Pointer {
 		target = target.Elem()
 		ptrLevel += "*"
+	}
+
+	if target.Kind() != reflect.Struct {
+		panic("unsupported type for event: " + target.String())
 	}
 
 	name := target.Name()

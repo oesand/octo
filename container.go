@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/oesand/octo/internal/typing"
+	"github.com/oesand/octo/internal"
 )
 
 // DefaultContainer is a global fallback container used when none is provided.
@@ -18,10 +18,10 @@ func New() *Container {
 // Container stores service declarations and provides thread-safe access.
 type Container struct {
 	mu      sync.RWMutex
-	injects map[typing.TypeKey][]Declaration
+	injects map[internal.ShadowType][]Declaration
 
 	resolveCacheMu sync.RWMutex
-	resolveCache   map[typing.TypeKey]Declaration
+	resolveCache   map[internal.ShadowType]Declaration
 }
 
 func containerOrDefault(container *Container) *Container {
@@ -39,10 +39,10 @@ func injectLazy[T any](container *Container, name string, provider Provider[T]) 
 	}
 
 	if container.injects == nil {
-		container.injects = make(map[typing.TypeKey][]Declaration)
+		container.injects = make(map[internal.ShadowType][]Declaration)
 	}
 
-	var key typing.Type[T]
+	var key internal.Type[T]
 	container.injects[key] = append(container.injects[key], injection)
 }
 
@@ -78,10 +78,10 @@ func injectValue[T any](container *Container, name string, value T) {
 	}
 
 	if container.injects == nil {
-		container.injects = make(map[typing.TypeKey][]Declaration)
+		container.injects = make(map[internal.ShadowType][]Declaration)
 	}
 
-	var key typing.Type[T]
+	var key internal.Type[T]
 	container.injects[key] = append(container.injects[key], injection)
 }
 

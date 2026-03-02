@@ -1,21 +1,24 @@
-package mediator
+package mediator_test
 
 import (
 	"testing"
 
 	"github.com/oesand/octo"
+	"github.com/oesand/octo/mediator"
 )
 
 func TestInject_Singleton(t *testing.T) {
 	container := octo.New()
-	m1 := Inject(container)
-	m2 := Inject(container)
+	m1 := mediator.Inject(container)
+	m2 := mediator.Inject(container)
 
 	if m1 != m2 {
 		t.Fatal("expected same manager instance")
 	}
+}
 
-	container = octo.New()
+func TestInject_ManualInject(t *testing.T) {
+	container := octo.New()
 
 	defer func() {
 		if r := recover(); r == nil {
@@ -23,7 +26,7 @@ func TestInject_Singleton(t *testing.T) {
 		}
 	}()
 
-	octo.InjectValue(container, &Manager{})
+	octo.InjectValue(container, &mediator.Manager{})
 
-	Inject(container)
+	mediator.Inject(container)
 }

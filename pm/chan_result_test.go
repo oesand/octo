@@ -1,14 +1,16 @@
-package pm
+package pm_test
 
 import (
 	"context"
 	"errors"
 	"testing"
+
+	"github.com/oesand/octo/pm"
 )
 
 // Basic buffered channel Put + Wait.
 func TestWaitBufferedSuccess(t *testing.T) {
-	ch := make(ChanRes[int], 3)
+	ch := make(pm.ChanRes[int], 3)
 
 	ch.Put(1, nil)
 	ch.Put(2, nil)
@@ -31,7 +33,7 @@ func TestWaitBufferedSuccess(t *testing.T) {
 
 // Error propagation through Wait().
 func TestWaitPropagatesError(t *testing.T) {
-	ch := make(ChanRes[int], 2)
+	ch := make(pm.ChanRes[int], 2)
 
 	ch.Put(10, nil)
 	ch.Put(0, errors.New("boom"))
@@ -51,7 +53,7 @@ func TestWaitPropagatesError(t *testing.T) {
 
 // Iterator on buffered channel should read exactly cap(ch) items.
 func TestIteratorBuffered(t *testing.T) {
-	ch := make(ChanRes[string], 2)
+	ch := make(pm.ChanRes[string], 2)
 
 	ch.Put("A", nil)
 	ch.Put("B", nil)
@@ -74,7 +76,7 @@ func TestIteratorBuffered(t *testing.T) {
 
 // UnBuffered channel: iterator reads until close.
 func TestIteratorUnbuffered(t *testing.T) {
-	ch := make(ChanRes[int])
+	ch := make(pm.ChanRes[int])
 
 	go func() {
 		ch.Put(5, nil)
@@ -99,7 +101,7 @@ func TestIteratorUnbuffered(t *testing.T) {
 
 // Test cancellation while iterating.
 func TestWaitCanceled(t *testing.T) {
-	ch := make(ChanRes[int], 3)
+	ch := make(pm.ChanRes[int], 3)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -116,7 +118,7 @@ func TestWaitCanceled(t *testing.T) {
 
 // Test Go() helper safely.
 func TestGoHelper(t *testing.T) {
-	ch := make(ChanRes[int], 1) // buffered channel
+	ch := make(pm.ChanRes[int], 1) // buffered channel
 
 	ch.Go(context.Background(), func(ctx context.Context) (int, error) {
 		return 99, nil
@@ -135,13 +137,13 @@ func TestGoHelper(t *testing.T) {
 
 // Confirm unbuffered detection.
 func TestUnbuffered(t *testing.T) {
-	ch := make(ChanRes[int])
+	ch := make(pm.ChanRes[int])
 
 	if !ch.UnBuffered() {
 		t.Fatalf("expected channel to be unbuffered")
 	}
 
-	ch2 := make(ChanRes[int], 5)
+	ch2 := make(pm.ChanRes[int], 5)
 	if ch2.UnBuffered() {
 		t.Fatalf("expected buffered channel")
 	}
@@ -149,7 +151,7 @@ func TestUnbuffered(t *testing.T) {
 
 // Closing early should stop iterator cleanly.
 func TestCloseEarly(t *testing.T) {
-	ch := make(ChanRes[int], 5)
+	ch := make(pm.ChanRes[int], 5)
 
 	ch.Put(1, nil)
 	ch.Put(2, nil)
@@ -169,7 +171,7 @@ func TestCloseEarly(t *testing.T) {
 
 // Iterator should stop if yield returns false.
 func TestIteratorYieldStop(t *testing.T) {
-	ch := make(ChanRes[int], 3)
+	ch := make(pm.ChanRes[int], 3)
 	ch.Put(10, nil)
 	ch.Put(20, nil)
 	ch.Put(30, nil)
@@ -192,7 +194,7 @@ func TestIteratorYieldStop(t *testing.T) {
 
 // Test multiple Go() goroutines safely.
 func TestMultipleGoRoutines(t *testing.T) {
-	ch := make(ChanRes[int], 3)
+	ch := make(pm.ChanRes[int], 3)
 
 	ch.Go(context.Background(), func(ctx context.Context) (int, error) { return 1, nil })
 	ch.Go(context.Background(), func(ctx context.Context) (int, error) { return 2, nil })

@@ -1,4 +1,4 @@
-package mediator
+package mediator_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/oesand/octo"
+	"github.com/oesand/octo/mediator"
 )
 
 type EventX struct {
@@ -37,10 +38,10 @@ func TestPublish_SingleHandler(t *testing.T) {
 	container := octo.New()
 	h1 := &EventHandlerX{}
 	octo.InjectValue(container, h1)
-	manager := Inject(container)
+	manager := mediator.Inject(container)
 
 	ev := EventX{Name: "test"}
-	err := Publish(manager, context.Background(), ev)
+	err := mediator.Publish(manager, context.Background(), ev)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -55,9 +56,9 @@ func TestPublish_MultipleHandlers(t *testing.T) {
 	h1, h2 := &EventHandlerX{}, &EventHandlerX{}
 	octo.InjectValue(container, h1)
 	octo.InjectValue(container, h2)
-	manager := Inject(container)
+	manager := mediator.Inject(container)
 
-	err := Publish(manager, context.Background(), EventX{"multi"})
+	err := mediator.Publish(manager, context.Background(), EventX{"multi"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -72,12 +73,12 @@ func TestPublish_MultipleHandlersCancelled(t *testing.T) {
 	h1, h2 := &BlockHandler{}, &EventHandlerX{}
 	octo.InjectValue(container, h1)
 	octo.InjectValue(container, h2)
-	manager := Inject(container)
+	manager := mediator.Inject(container)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
 
-	err := Publish(manager, ctx, EventX{"multi"})
+	err := mediator.Publish(manager, ctx, EventX{"multi"})
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("unexpected error: %v", err)
 	}

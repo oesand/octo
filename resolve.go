@@ -5,7 +5,7 @@ import (
 	"iter"
 	"reflect"
 
-	"github.com/oesand/octo/internal/typing"
+	"github.com/oesand/octo/internal"
 )
 
 func resolve[T any](container *Container, name string) Declaration {
@@ -13,22 +13,20 @@ func resolve[T any](container *Container, name string) Declaration {
 		return nil
 	}
 
+	var typeKey internal.Type[T]
+
 	if name == "" {
 		container.resolveCacheMu.RLock()
 		if len(container.resolveCache) > 0 {
-			if decl, ok := container.resolveCache[typing.Type[T]{}]; ok {
+			if decl, ok := container.resolveCache[typeKey]; ok {
 				return decl
 			}
 		}
 		container.resolveCacheMu.RUnlock()
 	}
 
-	resolveType := reflect.TypeFor[T]()
-	isInterface := resolveType.Kind() == reflect.Interface
-
 	var decl Declaration
-	if !isInterface {
-		var typeKey typing.Type[T]
+	if typeKey.Real() {
 		if group, ok := container.injects[typeKey]; ok && len(group) > 0 {
 			for _, inject := range group {
 				if name != "" && inject.Name() != name {
@@ -40,6 +38,7 @@ func resolve[T any](container *Container, name string) Declaration {
 			}
 		}
 	} else {
+		resolveType := typeKey.Type()
 		for groupType, group := range container.injects {
 			if len(group) == 0 || !groupType.Type().AssignableTo(resolveType) {
 				continue
@@ -63,10 +62,10 @@ func resolve[T any](container *Container, name string) Declaration {
 	if name == "" && decl != nil {
 		container.resolveCacheMu.Lock()
 		if container.resolveCache == nil {
-			container.resolveCache = make(map[typing.TypeKey]Declaration)
+			container.resolveCache = make(map[internal.ShadowType]Declaration)
 		}
 
-		container.resolveCache[typing.Type[T]{}] = decl
+		container.resolveCache[typeKey] = decl
 		container.resolveCacheMu.Unlock()
 	}
 
@@ -151,15 +150,15 @@ func ResolveAll[T any](container *Container) []T {
 		return result
 	}
 
-	resolveType := reflect.TypeFor[T]()
-	isInterface := resolveType.Kind() == reflect.Interface
-	if !isInterface {
-		if group, ok := container.injects[typing.Type[T]{}]; ok {
+	var typeKey internal.Type[T]
+	if typeKey.Real() {
+		if group, ok := container.injects[typeKey]; ok {
 			for _, inject := range group {
 				result = append(result, inject.Value().(T))
 			}
 		}
 	} else {
+		resolveType := typeKey.Type()
 		for groupType, group := range container.injects {
 			if groupType.Type().AssignableTo(resolveType) {
 				for _, inject := range group {
