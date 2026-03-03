@@ -1,45 +1,16 @@
 package foo
 
-type Inf interface{}
+import (
+	"github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/embedded"
+	"github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/fnc"
+)
 
-type Struct struct{}
+type Named struct{}
+type Linked struct{}
 
-type Named struct {
-	Oth   *Other
-	Inf   Inf
-	SlInf []Inf
-}
-
-type Other struct {
-	Nm    *Named `key:"key1"`
-	Inf   Inf
-	SlInf []Inf
-}
-
-type NewestStruct struct{}
-
-func NewStruct(
-	i Inf,
-	sl []Inf,
-	o *Other,
-	st Struct,
-	nm *Named,
-) *NewestStruct {
-	return &NewestStruct{}
-}
-
-func NewStct(
-	i Inf,
-	sl []Inf,
-	o Other,
-	st *Struct,
-	nm Named,
-) NewestStruct {
-	return NewestStruct{}
-}
-
-func NewInf(
-	st *Struct,
-) Inf {
-	return *Other{}
+type Struct struct {
+	Linked       *Linked
+	Named        *Named `key:"named"`
+	NestedFunc   *fnc.Struct
+	NestedStruct *embedded.Struct
 }

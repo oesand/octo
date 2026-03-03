@@ -2,9 +2,10 @@ package main
 
 import (
 	"bytes"
-	"fmt"
+
 	"github.com/oesand/octo/internal"
-	"github.com/oesand/octo/internal/parse"
+	"github.com/oesand/octo/internal/octogen/parse"
+
 	"log"
 	"os"
 	"path/filepath"
@@ -48,7 +49,7 @@ func main() {
 
 		log.Printf("run test '%s'...\n", name)
 
-		packages, warns, errs := parse.ParseInjects(currentModule, path)
+		packages, warns, errs := parse.Parse(currentModule, path)
 
 		warnsLogsPath := filepath.Join(path, "warns.log")
 		wantWarns := internal.IsFileExist(warnsLogsPath)
@@ -177,40 +178,38 @@ func main() {
 
 		if len(packages) != 1 {
 			failed = true
-			var names []string
+			var foundPkgs []string
 			for _, pkg := range packages {
-				names = append(names, pkg.Name)
+				foundPkgs = append(foundPkgs, pkg.Path())
 			}
-			errf("too many packages found: %v", names)
+			errf("too many packages found: %v", foundPkgs)
 			continue
 		}
 
 		pkg := packages[0]
-		wantGenPath := filepath.Join(pkg.Path, "want_gen.go")
+		wantGenPath := filepath.Join(pkg.Dir(), "want_gen.go")
 		if !internal.IsFileExist(wantGenPath) {
-			errf("no want_gen file or expected error logs file for package '%s'", pkg.Path)
+			errf("no want_gen file or expected error logs file for package '%s'", pkg.Path())
 		}
+
 		wantContent, err := os.ReadFile(wantGenPath)
 		if err != nil {
 			errf("cannot want_gen file err: %s", err)
 			continue
 		}
 
-		var buf bytes.Buffer
-		err = internal.Generate(&buf, pkg)
-		if err != nil {
-			errf("fail to generate: %s", err)
-			continue
-		} else {
-			log.Println("generated successfully")
-		}
-
-		actualContent := buf.Bytes()
+		actualContent := pkg.Render()
 		if bytes.Equal(wantContent, actualContent) {
 			log.Println("generated content correct")
 		} else {
 			errf("unexpected generated content")
-			fmt.Print(string(actualContent))
+
+			log.Printf("want len: %d, actual len: %d\n", len(wantContent), len(actualContent))
+			diff := bytes.Compare(wantContent, actualContent)
+			log.Printf("diff index: %d\n", diff)
+
+			log.Printf("want:   %q\n", wantContent)
+			log.Printf("actual: %q\n", actualContent)
 		}
 	}
 

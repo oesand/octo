@@ -1,12 +1,15 @@
-package octo
+package octo_test
 
 import (
 	"sync/atomic"
 	"testing"
+
+	"github.com/oesand/octo"
 )
 
 type ServiceInterface interface {
 	Hello() string
+	Name() string
 }
 
 type MyService struct {
@@ -17,93 +20,113 @@ func (s *MyService) Hello() string {
 	return "hi"
 }
 
+func (s *MyService) Name() string {
+	return s.name
+}
+
 type OtherService struct{}
 
 func TestTryInjectValue_Struct(t *testing.T) {
-	c := New()
+	c := octo.New()
 
-	ok := TryInjectValue(c, &MyService{name: "struct"})
+	ok := octo.TryInjectValue(c, &MyService{name: "struct"})
 	if !ok {
 		t.Fatalf("expected TryInjectValue to succeed for struct")
 	}
 
-	res := Resolve[*MyService](c)
+	res := octo.Resolve[*MyService](c)
 	if res == nil || res.name != "struct" {
 		t.Fatalf("expected resolved struct 'struct', got %#v", res)
 	}
 }
 
 func TestTryInjectValue_DuplicateStruct(t *testing.T) {
-	c := New()
+	c := octo.New()
 
-	_ = TryInjectValue(c, &MyService{name: "first"})
-	ok := TryInjectValue(c, &MyService{name: "second"})
+	_ = octo.TryInjectValue(c, &MyService{name: "first"})
+	ok := octo.TryInjectValue(c, &MyService{name: "second"})
 	if ok {
 		t.Fatalf("expected duplicate inject to fail")
 	}
 
-	res := Resolve[*MyService](c)
+	res := octo.Resolve[*MyService](c)
 	if res.name != "first" {
 		t.Fatalf("expected first value, got %q", res.name)
 	}
 }
 
 func TestTryInjectValue_Interface(t *testing.T) {
-	c := New()
+	c := octo.New()
 
-	ok := TryInjectValue[ServiceInterface](c, &MyService{name: "iface"})
+	octo.InjectValue(c, &OtherService{})
+
+	ok := octo.TryInjectValue(c, &MyService{name: "iface"})
 	if !ok {
 		t.Fatalf("expected TryInjectValue to succeed for interface")
 	}
 
-	res := Resolve[ServiceInterface](c)
-	if res == nil || res.Hello() != "hi" {
+	res := octo.Resolve[ServiceInterface](c)
+
+	if name := res.Name(); name != "iface" {
+		t.Fatalf("expected iface value, got %q", name)
+	}
+
+	if res.Hello() != "hi" {
 		t.Fatalf("expected resolved interface with Hello=hi, got %#v", res)
 	}
 }
 
 func TestTryInject_InterfaceProvider(t *testing.T) {
-	c := New()
+	c := octo.New()
 
-	ok := TryInject(c, func(c *Container) ServiceInterface {
+	octo.InjectValue(c, &OtherService{})
+
+	ok := octo.TryInject(c, func(c *octo.Container) ServiceInterface {
 		return &MyService{name: "provider"}
 	})
 	if !ok {
 		t.Fatalf("expected TryInject with interface provider to succeed")
 	}
 
-	res := Resolve[ServiceInterface](c)
+	res := octo.Resolve[ServiceInterface](c)
 	if res == nil || res.Hello() != "hi" {
 		t.Fatalf("expected provider Hello=hi, got %#v", res)
 	}
 }
 
 func TestTryInject_InterfaceDuplicate(t *testing.T) {
-	c := New()
+	c := octo.New()
 
-	_ = TryInject(c, func(c *Container) ServiceInterface {
+	octo.InjectValue(c, &OtherService{})
+
+	_ = octo.TryInject(c, func(c *octo.Container) ServiceInterface {
 		return &MyService{name: "first"}
 	})
 
-	ok := TryInject(c, func(c *Container) ServiceInterface {
+	ok := octo.TryInject(c, func(c *octo.Container) ServiceInterface {
 		return &MyService{name: "second"}
 	})
 	if ok {
 		t.Fatalf("expected duplicate interface inject to fail")
 	}
 
-	res := Resolve[ServiceInterface](c)
-	if res.Hello() != "hi" {
-		t.Fatalf("expected first provider Hello=hi, got %q", res.Hello())
+	res := octo.Resolve[ServiceInterface](c)
+	if name := res.Name(); name != "first" {
+		t.Fatalf("expected first value, got %q", name)
+	}
+
+	if got := res.Hello(); got != "hi" {
+		t.Fatalf("expected first provider Hello=hi, got %q", got)
 	}
 }
 
 // Test direct type
 func TestInjectValueAndResolve(t *testing.T) {
-	c := New()
-	InjectValue(c, &MyService{})
+	c := octo.New()
+	octo.InjectValue(c, &OtherService{})
+	octo.InjectValue(c, &MyService{})
 
-	res := Resolve[*MyService](c)
+	res := octo.Resolve[*MyService](c)
 	if res == nil {
 		t.Fatal("expected non-nil MyService")
 	}
@@ -113,48 +136,48 @@ func TestInjectValueAndResolve(t *testing.T) {
 }
 
 func TestInjectNamedValueAndResolveNamed(t *testing.T) {
-	c := New()
-	InjectNamedValue(c, "foo", &MyService{})
+	c := octo.New()
+	octo.InjectNamedValue(c, "foo", &MyService{})
 
-	res := ResolveNamed[*MyService](c, "foo")
+	res := octo.ResolveNamed[*MyService](c, "foo")
 	if res == nil {
 		t.Fatal("expected non-nil MyService for named injection")
 	}
 }
 
 func TestInjectProviderAndResolve(t *testing.T) {
-	c := New()
-	Inject[*MyService](c, func(c *Container) *MyService { return &MyService{} })
+	c := octo.New()
+	octo.Inject[*MyService](c, func(c *octo.Container) *MyService { return &MyService{} })
 
-	res := Resolve[*MyService](c)
+	res := octo.Resolve[*MyService](c)
 	if res == nil {
 		t.Fatal("expected non-nil MyService from provider")
 	}
 }
 
 func TestTryResolveReturnsZeroValue(t *testing.T) {
-	c := New()
-	res := TryResolve[*MyService](c)
+	c := octo.New()
+	res := octo.TryResolve[*MyService](c)
 	if res != nil {
 		t.Fatal("expected nil since nothing was registered")
 	}
 }
 
 func TestResolveInjectionsIteration(t *testing.T) {
-	c := New()
-	InjectValue(c, &MyService{})
-	InjectValue(c, &OtherService{})
+	c := octo.New()
+	octo.InjectValue(c, &MyService{})
+	octo.InjectValue(c, &OtherService{})
 	var count atomic.Int32
 
-	iter := ResolveInjections(c)
+	iter := octo.ResolveInjections(c)
 	for decl := range iter {
 		switch count.Load() {
 		case 0:
-			if !DeclOfType[*MyService](decl) {
+			if !octo.OfType[*MyService](decl) {
 				t.Fatalf("expected type MyService, got %T", decl.Value())
 			}
 		case 1:
-			if !DeclOfType[*OtherService](decl) {
+			if !octo.OfType[*OtherService](decl) {
 				t.Fatalf("expected type OtherService, got %T", decl.Value())
 			}
 		case 2:
@@ -170,11 +193,11 @@ func TestResolveInjectionsIteration(t *testing.T) {
 }
 
 func TestResolveAllIteration(t *testing.T) {
-	c := New()
-	InjectValue(c, &MyService{})
-	InjectValue(c, &OtherService{})
+	c := octo.New()
+	octo.InjectValue(c, &MyService{})
+	octo.InjectValue(c, &OtherService{})
 
-	sl := ResolveAll[*MyService](c)
+	sl := octo.ResolveAll[*MyService](c)
 
 	if c := len(sl); c != 1 {
 		t.Fatalf("expected 1 injection, got %d", c)
@@ -182,12 +205,12 @@ func TestResolveAllIteration(t *testing.T) {
 }
 
 func TestResolveAllIterationByInterface(t *testing.T) {
-	c := New()
-	InjectValue(c, &MyService{})
-	InjectValue(c, &MyService{})
-	InjectValue(c, &OtherService{})
+	c := octo.New()
+	octo.InjectValue(c, &MyService{})
+	octo.InjectValue(c, &MyService{})
+	octo.InjectValue(c, &OtherService{})
 
-	sl := ResolveAll[ServiceInterface](c)
+	sl := octo.ResolveAll[ServiceInterface](c)
 
 	if c := len(sl); c != 2 {
 		t.Fatalf("expected 2 injection, got %d", c)
@@ -195,21 +218,21 @@ func TestResolveAllIterationByInterface(t *testing.T) {
 }
 
 func TestCleanInjectionsRemovesSelected(t *testing.T) {
-	c := New()
-	InjectValue(c, &MyService{})
-	InjectValue(c, &OtherService{})
+	c := octo.New()
+	octo.InjectValue(c, &MyService{})
+	octo.InjectValue(c, &OtherService{})
 
 	// Remove MyService
-	CleanInjections(c, func(s ServiceDeclaration) bool {
-		return DeclOfType[*MyService](s)
+	octo.CleanInjections(c, func(s octo.Declaration) bool {
+		return octo.OfType[*MyService](s)
 	})
 
 	var count atomic.Int32
-	iter := ResolveInjections(c)
+	iter := octo.ResolveInjections(c)
 	for decl := range iter {
 		switch count.Load() {
 		case 0:
-			if !DeclOfType[*OtherService](decl) {
+			if !octo.OfType[*OtherService](decl) {
 				t.Fatalf("expected type OtherService, got %T", decl.Value())
 			}
 		case 1:
@@ -234,18 +257,18 @@ func TestResolvePanicsIfRequiredNotFound(t *testing.T) {
 		if !ok {
 			t.Fatalf("expected panic not string: %T", r)
 		}
-		if msg != "octo: fail to resolve type *octo.MyService" {
+		if msg != "octo: fail to resolve type *octo_test.MyService" {
 			t.Fatalf("unexpected panic error message: %s", msg)
 		}
 	}()
 
-	c := New()
-	Resolve[*MyService](c)
+	c := octo.New()
+	octo.Resolve[*MyService](c)
 }
 
 func TestResolveDoesNotPanicIfOptionalNotFound(t *testing.T) {
-	c := New()
-	res := TryResolve[*MyService](c)
+	c := octo.New()
+	res := octo.TryResolve[*MyService](c)
 	if res != nil {
 		t.Fatal("expected nil for TryResolve on missing service")
 	}
@@ -254,12 +277,12 @@ func TestResolveDoesNotPanicIfOptionalNotFound(t *testing.T) {
 // Test interface
 
 func TestInjectValueAndResolveByInterface(t *testing.T) {
-	c := New()
-	InjectValue(c, &OtherService{})
-	InjectValue(c, &MyService{name: "foo"})
-	InjectValue(c, &MyService{name: "bar"})
+	c := octo.New()
+	octo.InjectValue(c, &OtherService{})
+	octo.InjectValue(c, &MyService{name: "foo"})
+	octo.InjectValue(c, &MyService{name: "bar"})
 
-	res := Resolve[ServiceInterface](c)
+	res := octo.Resolve[ServiceInterface](c)
 	if res == nil {
 		t.Fatal("expected non-nil MyService")
 	}
@@ -273,13 +296,13 @@ func TestInjectValueAndResolveByInterface(t *testing.T) {
 }
 
 func TestInjectNamedValueAndResolveNamedByInterface(t *testing.T) {
-	c := New()
-	InjectNamedValue(c, "foo", &MyService{name: "foo"})
-	InjectNamedValue(c, "bar", &MyService{name: "bar"})
-	InjectNamedValue(c, "bar", &OtherService{})
-	InjectNamedValue(c, "invalid", &MyService{name: "invalid"})
+	c := octo.New()
+	octo.InjectNamedValue(c, "foo", &MyService{name: "foo"})
+	octo.InjectNamedValue(c, "bar", &MyService{name: "bar"})
+	octo.InjectNamedValue(c, "bar", &OtherService{})
+	octo.InjectNamedValue(c, "invalid", &MyService{name: "invalid"})
 
-	res := ResolveNamed[ServiceInterface](c, "bar")
+	res := octo.ResolveNamed[ServiceInterface](c, "bar")
 	if res == nil {
 		t.Fatal("expected non-nil MyService for named injection")
 	}
@@ -293,11 +316,11 @@ func TestInjectNamedValueAndResolveNamedByInterface(t *testing.T) {
 }
 
 func TestInjectProviderAndResolveByInterface(t *testing.T) {
-	c := New()
-	Inject(c, func(container *Container) *MyService { return &MyService{} })
-	Inject(c, func(container *Container) *OtherService { return &OtherService{} })
+	c := octo.New()
+	octo.Inject(c, func(container *octo.Container) *MyService { return &MyService{} })
+	octo.Inject(c, func(container *octo.Container) *OtherService { return &OtherService{} })
 
-	res := Resolve[ServiceInterface](c)
+	res := octo.Resolve[ServiceInterface](c)
 	if res == nil {
 		t.Fatal("expected non-nil MyService")
 	}
@@ -307,40 +330,40 @@ func TestInjectProviderAndResolveByInterface(t *testing.T) {
 }
 
 func TestResolveContainer(t *testing.T) {
-	c := New()
-	res := Resolve[*Container](c)
+	c := octo.New()
+	res := octo.Resolve[*octo.Container](c)
 	if res != c {
 		t.Fatal("expected container not returned")
 	}
 }
 
 func TestTryResolveContainer(t *testing.T) {
-	c := New()
-	res := TryResolve[*Container](c)
+	c := octo.New()
+	res := octo.TryResolve[*octo.Container](c)
 	if res != c {
 		t.Fatal("expected container not returned")
 	}
 }
 
 func TestTryResolveReturnsZeroValueByInterface(t *testing.T) {
-	c := New()
-	res := TryResolve[ServiceInterface](c)
+	c := octo.New()
+	res := octo.TryResolve[ServiceInterface](c)
 	if res != nil {
 		t.Fatal("expected nil since nothing was registered")
 	}
 }
 
 func TestResolveInjectionsIterationByInterface(t *testing.T) {
-	c := New()
-	InjectValue(c, &MyService{name: "foo"})
-	InjectValue(c, &MyService{name: "bar"})
+	c := octo.New()
+	octo.InjectValue(c, &MyService{name: "foo"})
+	octo.InjectValue(c, &MyService{name: "bar"})
 	var count atomic.Int32
 
-	iter := ResolveInjections(c)
+	iter := octo.ResolveInjections(c)
 	for decl := range iter {
 		switch count.Load() {
 		case 0:
-			if !DeclOfType[ServiceInterface](decl) {
+			if !octo.OfType[ServiceInterface](decl) {
 				t.Fatalf("expected type ServiceInterface, got %T", decl.Value())
 			} else {
 				if decl.Value().(*MyService).name != "foo" {
@@ -348,7 +371,7 @@ func TestResolveInjectionsIterationByInterface(t *testing.T) {
 				}
 			}
 		case 1:
-			if !DeclOfType[ServiceInterface](decl) {
+			if !octo.OfType[ServiceInterface](decl) {
 				t.Fatalf("expected type ServiceInterface, got %T", decl.Value())
 			} else {
 				if decl.Value().(*MyService).name != "bar" {
@@ -368,22 +391,22 @@ func TestResolveInjectionsIterationByInterface(t *testing.T) {
 }
 
 func TestCleanInjectionsRemovesSelectedByInterface(t *testing.T) {
-	c := New()
-	InjectValue(c, &MyService{name: "foo"})
-	InjectValue(c, &OtherService{})
-	InjectValue(c, &MyService{name: "bar"})
+	c := octo.New()
+	octo.InjectValue(c, &MyService{name: "foo"})
+	octo.InjectValue(c, &OtherService{})
+	octo.InjectValue(c, &MyService{name: "bar"})
 
 	// Remove MyService
-	CleanInjections(c, func(s ServiceDeclaration) bool {
-		return DeclOfType[ServiceInterface](s)
+	octo.CleanInjections(c, func(s octo.Declaration) bool {
+		return octo.OfType[ServiceInterface](s)
 	})
 
 	var count atomic.Int32
-	iter := ResolveInjections(c)
+	iter := octo.ResolveInjections(c)
 	for decl := range iter {
 		switch count.Load() {
 		case 0:
-			if !DeclOfType[*OtherService](decl) {
+			if !octo.OfType[*OtherService](decl) {
 				t.Fatalf("expected type OtherService, got %T", decl.Value())
 			}
 		case 1:
@@ -408,18 +431,18 @@ func TestResolvePanicsIfRequiredNotFoundByInterface(t *testing.T) {
 		if !ok {
 			t.Fatalf("expected panic not string: %T", r)
 		}
-		if msg != "octo: fail to resolve type octo.ServiceInterface" {
+		if msg != "octo: fail to resolve type octo_test.ServiceInterface" {
 			t.Fatalf("unexpected panic error message: %s", msg)
 		}
 	}()
 
-	c := New()
-	Resolve[ServiceInterface](c)
+	c := octo.New()
+	octo.Resolve[ServiceInterface](c)
 }
 
 func TestResolveDoesNotPanicIfOptionalNotFoundByInterface(t *testing.T) {
-	c := New()
-	res := TryResolve[ServiceInterface](c)
+	c := octo.New()
+	res := octo.TryResolve[ServiceInterface](c)
 	if res != nil {
 		t.Fatal("expected nil for TryResolve on missing service")
 	}
@@ -436,8 +459,8 @@ func TestPanicWhenInjectContainer(t *testing.T) {
 		}
 	}()
 
-	c := New()
-	Inject(c, func(c *Container) *Container {
+	c := octo.New()
+	octo.Inject(c, func(c *octo.Container) *octo.Container {
 		return c
 	})
 }
@@ -453,6 +476,6 @@ func TestPanicWhenInjectValueContainer(t *testing.T) {
 		}
 	}()
 
-	c := New()
-	InjectValue(c, c)
+	c := octo.New()
+	octo.InjectValue(c, c)
 }

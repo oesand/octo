@@ -1,0 +1,3 @@
+/foo/decl.go:8: expect no arguments in declaration function
+/foo/decl.go:8: expect no generics in declaration function
+/foo/decl.go:8: expect no returns in declaration function
