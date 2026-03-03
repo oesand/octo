@@ -10,7 +10,7 @@ import (
 	"github.com/oesand/octo/internal/octogen/content/injects"
 )
 
-func Parse(module, dir string) ([]*content.PkgRenderer, []string, []error) {
+func Parse(module, dir string) ([]content.PackageRenderer, []string, []error) {
 	parseCtx := newCtx(module, dir)
 
 	pkgs, err := parseCtx.Packages()
@@ -18,7 +18,7 @@ func Parse(module, dir string) ([]*content.PkgRenderer, []string, []error) {
 		return nil, nil, []error{err}
 	}
 
-	var outputs []*content.PkgRenderer
+	var outputs []content.PackageRenderer
 	for pkg := range pkgs {
 		pkgPath := pkg.ID
 		renderCtx := content.NewCtx(pkgPath)
@@ -101,7 +101,8 @@ func Parse(module, dir string) ([]*content.PkgRenderer, []string, []error) {
 							}
 						}
 
-						inject, injectImports, err := parseInjectFunc(injectKey, funcObj)
+						line := parseCtx.GetLine(call.Pos())
+						inject, injectImports, err := parseInjectFunc(line, injectKey, funcObj)
 						if err != nil {
 							parseCtx.AddError(call.Pos(), err)
 						} else {
@@ -139,7 +140,8 @@ func Parse(module, dir string) ([]*content.PkgRenderer, []string, []error) {
 							}
 						}
 
-						inject, injectImports, err := parseInjectStruct(injectKey, structType)
+						line := parseCtx.GetLine(call.Pos())
+						inject, injectImports, err := parseInjectStruct(line, injectKey, structType)
 						if err != nil {
 							parseCtx.AddError(call.Pos(), err)
 						} else {
@@ -156,14 +158,19 @@ func Parse(module, dir string) ([]*content.PkgRenderer, []string, []error) {
 				if parseCtx.NoErrs() && len(declaredInjects) > 0 {
 					injectFuncName := injectFunc.Name.Name
 
-					blocks = append(blocks, injects.Func(injectFuncName, declaredInjects))
+					sort.Slice(declaredInjects, func(i, j int) bool {
+						return declaredInjects[i].OriginalLine() < declaredInjects[j].OriginalLine()
+					})
+
+					line := parseCtx.GetLine(injectFunc.Pos())
+					blocks = append(blocks, injects.Func(line, injectFuncName, declaredInjects))
 				}
 			}
 		}
 
 		if parseCtx.NoErrs() && len(blocks) > 0 {
 			sort.Slice(blocks, func(i, j int) bool {
-				return blocks[i].Key() < blocks[j].Key()
+				return blocks[i].OriginalLine() < blocks[j].OriginalLine()
 			})
 
 			outputs = append(outputs, content.Pkg(pkgPath, pkg.Dir, renderCtx, blocks))

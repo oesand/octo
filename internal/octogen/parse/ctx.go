@@ -98,6 +98,10 @@ func (ctx *parseContext) formatMsg(pos token.Pos, format string, a ...any) strin
 	return fmt.Sprintf("%s:%d: %s", ps.Filename, ps.Line, formatted)
 }
 
+func (ctx *parseContext) GetLine(pos token.Pos) int {
+	return ctx.fset.Position(pos).Line
+}
+
 func (ctx *parseContext) AddWarn(pos token.Pos, format string, a ...any) {
 	ctx.warns = append(ctx.warns, ctx.formatMsg(pos, format, a...))
 }

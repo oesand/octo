@@ -3,6 +3,7 @@ package content
 import (
 	"bytes"
 	"iter"
+	"os"
 
 	"github.com/oesand/octo/internal/octogen/typing"
 )
@@ -14,6 +15,14 @@ const (
 	OctoAlias     = "octo"
 )
 
+type PackageRenderer interface {
+	Name() string
+	Path() string
+	Dir() string
+	Render() []byte
+	WriteFile(name string, mode os.FileMode) error
+}
+
 type RenderContext interface {
 	typing.Context
 	Import(pkg string)
@@ -21,6 +30,6 @@ type RenderContext interface {
 }
 
 type FileBlockRenderer interface {
-	Key() string
+	OriginalLine() int
 	RenderFileBlock(ctx RenderContext, b *bytes.Buffer)
 }

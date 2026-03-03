@@ -101,7 +101,8 @@ func main() {
 
 	pkg := packages[0]
 	genPath := filepath.Join(pkg.Dir(), "want_gen.go")
-	err = os.WriteFile(genPath, pkg.Render(), 0666)
+
+	err = pkg.WriteFile(genPath, 0666)
 	if err != nil {
 		log.Println(err)
 	} else {

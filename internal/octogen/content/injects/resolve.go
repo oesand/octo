@@ -7,31 +7,32 @@ import (
 	"github.com/oesand/octo/internal/octogen/typing"
 )
 
-func Resolve(key string, typ typing.Renderer) ResolveRenderer {
+func Resolve(key string, typeRender typing.Renderer) ResolveRenderer {
 	return &resolveRenderer{
-		Key:  key,
-		Type: typ,
+		key:        key,
+		typeRender: typeRender,
 	}
 }
 
 type resolveRenderer struct {
-	Key  string
-	Type typing.Renderer
+	key        string
+	typeRender typing.Renderer
 }
 
 func (r *resolveRenderer) RenderResolve(ctx content.RenderContext, b *bytes.Buffer) {
-	if key := r.Key; key != "" {
-		renderedType := r.Type.Render(ctx, typing.DeclOp)
+	renderer := r.typeRender
+	if key := r.key; key != "" {
+		renderedType := renderer.Render(ctx, typing.DeclOp)
 		b.WriteString("octo.ResolveNamed[" + renderedType + "](container, \"" + key + "\")")
 		return
 	}
 
-	if typ := r.Type; typ.Kind() == typing.SliceKind {
-		renderedType := typ.Child().Render(ctx, typing.DeclOp)
+	if renderer.Kind() == typing.SliceKind {
+		renderedType := renderer.Child().Render(ctx, typing.DeclOp)
 		b.WriteString("octo.ResolveAll[" + renderedType + "](container)")
 		return
 	}
 
-	renderedType := r.Type.Render(ctx, typing.DeclOp)
+	renderedType := renderer.Render(ctx, typing.DeclOp)
 	b.WriteString("octo.Resolve[" + renderedType + "](container)")
 }

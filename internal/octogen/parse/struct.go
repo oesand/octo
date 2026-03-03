@@ -11,7 +11,7 @@ import (
 	"github.com/oesand/octo/pm"
 )
 
-func parseInjectStruct(key string, typ types.Type) (injects.InjectRenderer, []string, error) {
+func parseInjectStruct(originalLine int, key string, typ types.Type) (injects.InjectRenderer, []string, error) {
 	isPtr, named, structType, ok := splitStructType(typ)
 	if !ok {
 		return nil, nil, errors.New("unexpected type, supported only struct, pointer struct")
@@ -32,7 +32,7 @@ func parseInjectStruct(key string, typ types.Type) (injects.InjectRenderer, []st
 		structRender = typing.NewPointer(1, structRender)
 	}
 
-	return injects.Inject(key, structRender, injects.ReturnStruct(structRender, fields)), imports.Values(), nil
+	return injects.Inject(originalLine, key, structRender, injects.ReturnStruct(structRender, fields)), imports.Values(), nil
 }
 
 func parseStructTypeRender(imports pm.Set[string], named *types.Named) (typing.Renderer, error) {
@@ -55,8 +55,8 @@ func parseStructTypeRender(imports pm.Set[string], named *types.Named) (typing.R
 	return typing.NewNamed(structPkg, structName, generics), nil
 }
 
-func parseStructFieldsRender(imports pm.Set[string], structType *types.Struct, embeddedDepth int) (map[string]injects.ResolveRenderer, error) {
-	fields := make(map[string]injects.ResolveRenderer, structType.NumFields())
+func parseStructFieldsRender(imports pm.Set[string], structType *types.Struct, embeddedDepth int) ([]injects.ResolveRenderer, error) {
+	fields := make([]injects.ResolveRenderer, 0, structType.NumFields())
 	for i := 0; i < structType.NumFields(); i++ {
 		field := structType.Field(i)
 		if !field.Exported() {
@@ -71,7 +71,7 @@ func parseStructFieldsRender(imports pm.Set[string], structType *types.Struct, e
 				return nil, fmt.Errorf("embedded field '%s': %w", fieldName, err)
 			}
 			if embeddedRenderer != nil {
-				fields[field.Name()] = embeddedRenderer
+				fields = append(fields, injects.ResolveField(fieldName, embeddedRenderer))
 			}
 			continue
 		}
@@ -90,7 +90,7 @@ func parseStructFieldsRender(imports pm.Set[string], structType *types.Struct, e
 			}
 		}
 
-		fields[fieldName] = injects.Resolve(resolveKey, fieldRender)
+		fields = append(fields, injects.ResolveField(fieldName, injects.Resolve(resolveKey, fieldRender)))
 	}
 
 	return fields, nil

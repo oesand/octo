@@ -7,25 +7,24 @@ import (
 	"github.com/oesand/octo/internal/octogen/typing"
 )
 
-func ReturnFunc(decl typing.Renderer, resolves []ResolveRenderer) ReturnRenderer {
+func ReturnFunc(decl typing.Renderer, entries []ResolveRenderer) ReturnRenderer {
 	return &returnFuncRenderer{
-		Decl:    decl,
-		Entries: resolves,
+		decl:    decl,
+		entries: entries,
 	}
 }
 
 type returnFuncRenderer struct {
-	Decl     typing.Renderer
-	Generics []typing.Renderer
-	Entries  []ResolveRenderer
+	decl    typing.Renderer
+	entries []ResolveRenderer
 }
 
 func (r *returnFuncRenderer) RenderReturn(ctx content.RenderContext, b *bytes.Buffer) {
 	b.WriteString("\t\treturn ")
-	b.WriteString(r.Decl.Render(ctx, typing.DeclOp))
+	b.WriteString(r.decl.Render(ctx, typing.DeclOp))
 	b.WriteString("(\n")
 
-	for _, renderer := range r.Entries {
+	for _, renderer := range r.entries {
 		b.WriteString("\t\t\t")
 		renderer.RenderResolve(ctx, b)
 		b.WriteString(",\n")

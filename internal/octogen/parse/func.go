@@ -10,7 +10,7 @@ import (
 	"github.com/oesand/octo/pm"
 )
 
-func parseInjectFunc(key string, funcObj *types.Func) (injects.InjectRenderer, []string, error) {
+func parseInjectFunc(originalLine int, key string, funcObj *types.Func) (injects.InjectRenderer, []string, error) {
 	funcSig := funcObj.Signature()
 
 	if funcSig.Results().Len() != 1 {
@@ -48,5 +48,5 @@ func parseInjectFunc(key string, funcObj *types.Func) (injects.InjectRenderer, [
 
 	funcDecl := typing.NewNamed(funcPkg, funcName, nil)
 
-	return injects.Inject(key, returned, injects.ReturnFunc(funcDecl, params)), imports.Values(), nil
+	return injects.Inject(originalLine, key, returned, injects.ReturnFunc(funcDecl, params)), imports.Values(), nil
 }

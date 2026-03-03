@@ -80,12 +80,12 @@ func runGen(genName string) {
 
 		log.Printf("generating package '%s'...\n", pkg.Path())
 
-		err = os.WriteFile(filePath, pkg.Render(), 0666)
+		err = pkg.WriteFile(filePath, 0666)
 		if err != nil {
-			log.Printf("failed to generate: %s\n", err)
-		} else {
-			log.Println("generated successfully")
+			log.Printf("failed to generate '%s': %w\n", filePath, err)
+			break
 		}
+		log.Println("generated successfully")
 	}
 
 	log.Println("generation finished")

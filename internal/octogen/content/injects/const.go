@@ -7,6 +7,7 @@ import (
 )
 
 type InjectRenderer interface {
+	OriginalLine() int
 	RenderInject(ctx content.RenderContext, b *bytes.Buffer)
 }
 

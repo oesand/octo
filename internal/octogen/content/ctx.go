@@ -2,6 +2,9 @@ package content
 
 import (
 	"iter"
+	"maps"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -67,8 +70,13 @@ func (r *renderCtx) Imports() iter.Seq2[string, string] {
 		if len(r.imports) == 0 {
 			return
 		}
-		for alias, imp := range r.imports {
-			if !yield(alias, imp) {
+
+		aliases := slices.Collect(maps.Keys(r.imports))
+		sort.Strings(aliases)
+
+		for _, alias := range aliases {
+			path := r.imports[alias]
+			if !yield(alias, path) {
 				break
 			}
 		}

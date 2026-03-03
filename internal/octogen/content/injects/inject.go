@@ -7,31 +7,37 @@ import (
 	"github.com/oesand/octo/internal/octogen/typing"
 )
 
-func Inject(key string, typ typing.Renderer, ret ReturnRenderer) InjectRenderer {
+func Inject(line int, key string, returnType typing.Renderer, returnRender ReturnRenderer) InjectRenderer {
 	return &injectRenderer{
-		Key:    key,
-		Type:   typ,
-		Return: ret,
+		line:         line,
+		key:          key,
+		returnType:   returnType,
+		returnRender: returnRender,
 	}
 }
 
 type injectRenderer struct {
-	Key    string
-	Type   typing.Renderer
-	Return ReturnRenderer
+	line         int
+	key          string
+	returnType   typing.Renderer
+	returnRender ReturnRenderer
+}
+
+func (r *injectRenderer) OriginalLine() int {
+	return r.line
 }
 
 func (r *injectRenderer) RenderInject(ctx content.RenderContext, b *bytes.Buffer) {
-	returningRenderer := r.Type.Render(ctx, typing.DeclOp)
+	returningRenderer := r.returnType.Render(ctx, typing.DeclOp)
 
-	switch r.Key {
+	switch r.key {
 	case "":
 		b.WriteString("\tocto.Inject(container, ")
 	case "~":
 		b.WriteString("\tocto.TryInject(container, ")
 	default:
 		b.WriteString("\tocto.InjectNamed(container, \"")
-		b.WriteString(r.Key)
+		b.WriteString(r.key)
 		b.WriteString("\", ")
 	}
 
@@ -39,7 +45,7 @@ func (r *injectRenderer) RenderInject(ctx content.RenderContext, b *bytes.Buffer
 	b.WriteString(returningRenderer)
 	b.WriteString(" {\n")
 
-	r.Return.RenderReturn(ctx, b)
+	r.returnRender.RenderReturn(ctx, b)
 
 	b.WriteString("\t})\n")
 }
