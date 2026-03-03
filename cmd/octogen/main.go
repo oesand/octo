@@ -82,7 +82,7 @@ func runGen(genName string) {
 
 		err = pkg.WriteFile(filePath, 0666)
 		if err != nil {
-			log.Printf("failed to generate '%s': %w\n", filePath, err)
+			log.Printf("failed to generate '%s': %s\n", filePath, err)
 			break
 		}
 		log.Println("generated successfully")
