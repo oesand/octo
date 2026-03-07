@@ -18,3 +18,8 @@ package octogen
 func Inject[T any](...any) {
 	panic("octo: cannot use function, only for scan")
 }
+
+// Fields marks a struct type for fields code generation.
+func Fields[T any]() {
+	panic("octo: cannot use function, only for scan")
+}

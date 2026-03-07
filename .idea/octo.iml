@@ -9,6 +9,7 @@
       <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/NestedAnyVariants" />
       <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/InjectAnyVariants" />
       <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/InjectWarnings" />
+      <excludeFolder url="file://$MODULE_DIR$/testdata/octogen_tests/Fields" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

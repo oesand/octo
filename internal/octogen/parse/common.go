@@ -92,21 +92,26 @@ func parseType(imports pm.Set[string], typ types.Type) (typing.Renderer, error) 
 	return nil, fmt.Errorf("not supported type: %s", typ.String())
 }
 
-func splitStructType(typ types.Type) (bool, *types.Named, *types.Struct, bool) {
+func splitPtrStructType(typ types.Type) (bool, *types.Named, *types.Struct, bool) {
 	ptr, isPtr := typ.(*types.Pointer)
 	if isPtr {
 		typ = ptr.Elem()
 	}
 
+	named, structType, ok := splitStructType(typ)
+	return isPtr, named, structType, ok
+}
+
+func splitStructType(typ types.Type) (*types.Named, *types.Struct, bool) {
 	named, ok := typ.(*types.Named)
 	if !ok {
-		return false, nil, nil, false
+		return nil, nil, false
 	}
 
 	structType, ok := named.Underlying().(*types.Struct)
 	if !ok {
-		return false, nil, nil, false
+		return nil, nil, false
 	}
 
-	return isPtr, named, structType, true
+	return named, structType, true
 }

@@ -59,9 +59,7 @@ func (m *Manager) doInit() {
 			method.Type.NumOut() == 1 && method.Type.Out(0).AssignableTo(errorType) {
 
 			eventType := method.Type.In(2)
-
-			handlers, _ := m.handlers[eventType]
-			m.handlers[eventType] = append(handlers, decl)
+			m.handlers[eventType] = append(m.handlers[eventType], decl)
 		}
 	}
 }

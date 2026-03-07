@@ -5,9 +5,9 @@ package foo
 
 import (
 	"github.com/oesand/octo"
-	embedded "github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/embedded"
-	fnc "github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/fnc"
-	generic "github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/generic"
+	"github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/embedded"
+	"github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/fnc"
+	"github.com/oesand/octo/testdata/octogen_tests/InjectAnyVariants/foo/generic"
 )
 
 func IncludeStruct(container *octo.Container) {

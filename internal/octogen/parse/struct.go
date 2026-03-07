@@ -12,7 +12,7 @@ import (
 )
 
 func parseInjectStruct(originalLine int, key string, typ types.Type) (injects.InjectRenderer, []string, error) {
-	isPtr, named, structType, ok := splitStructType(typ)
+	isPtr, named, structType, ok := splitPtrStructType(typ)
 	if !ok {
 		return nil, nil, errors.New("unexpected type, supported only struct, pointer struct")
 	}
@@ -23,7 +23,7 @@ func parseInjectStruct(originalLine int, key string, typ types.Type) (injects.In
 		return nil, nil, err
 	}
 
-	fields, err := parseStructFieldsRender(imports, structType, 0)
+	fields, err := parseStructFieldsResolves(imports, structType, 0)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -55,7 +55,7 @@ func parseStructTypeRender(imports pm.Set[string], named *types.Named) (typing.R
 	return typing.NewNamed(structPkg, structName, generics), nil
 }
 
-func parseStructFieldsRender(imports pm.Set[string], structType *types.Struct, embeddedDepth int) ([]injects.ResolveRenderer, error) {
+func parseStructFieldsResolves(imports pm.Set[string], structType *types.Struct, embeddedDepth int) ([]injects.ResolveRenderer, error) {
 	fields := make([]injects.ResolveRenderer, 0, structType.NumFields())
 	for i := 0; i < structType.NumFields(); i++ {
 		field := structType.Field(i)
@@ -97,8 +97,8 @@ func parseStructFieldsRender(imports pm.Set[string], structType *types.Struct, e
 }
 
 func parseEmbeddedFieldRenderer(imports pm.Set[string], typ types.Type, depth int) (injects.ResolveRenderer, error) {
-	isPtr, named, structType, ok := splitStructType(typ)
-	if !ok || isPtr {
+	named, structType, ok := splitStructType(typ)
+	if !ok {
 		return nil, nil
 	}
 
@@ -107,7 +107,7 @@ func parseEmbeddedFieldRenderer(imports pm.Set[string], typ types.Type, depth in
 		return nil, err
 	}
 
-	fields, err := parseStructFieldsRender(imports, structType, depth)
+	fields, err := parseStructFieldsResolves(imports, structType, depth)
 	if err != nil {
 		return nil, err
 	}
