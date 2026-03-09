@@ -13,25 +13,25 @@ type numericMinValidator[Value NumericTypes] struct {
 	min Value
 }
 
-func (c *numericMinValidator[Value]) Validate(value Value) []string {
-	if value < c.min {
-		return []string{fmt.Sprintf("must be greater than or equal to %v", c.min)}
+func (validator *numericMinValidator[Value]) Validate(value Value) ValidationErrors {
+	if value < validator.min {
+		return []string{fmt.Sprintf("must be greater than or equal to %v", validator.min)}
 	}
 	return nil
 }
 
 // Max creates a condition that validates a numeric value is less than or equal to the maximum.
-func Max[V NumericTypes](max V) Validator[V] {
-	return &validateMax[V]{max: max}
+func Max[Value NumericTypes](max Value) Validator[Value] {
+	return &numericMaxValidator[Value]{max: max}
 }
 
-type validateMax[V NumericTypes] struct {
-	max V
+type numericMaxValidator[Value NumericTypes] struct {
+	max Value
 }
 
-func (c *validateMax[V]) Validate(value V) []string {
-	if value > c.max {
-		return []string{fmt.Sprintf("must be less than or equal to %v", c.max)}
+func (validator *numericMaxValidator[Value]) Validate(value Value) ValidationErrors {
+	if value > validator.max {
+		return []string{fmt.Sprintf("must be less than or equal to %v", validator.max)}
 	}
 	return nil
 }

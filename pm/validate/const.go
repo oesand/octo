@@ -1,9 +1,18 @@
 package validate
 
 import (
-	"errors"
 	"strings"
 )
+
+type ValidationErrors []string
+
+func (errs ValidationErrors) IsValid() bool {
+	return len(errs) == 0
+}
+
+func (errs ValidationErrors) Error() string {
+	return strings.Join(errs, "\n")
+}
 
 // NumericTypes represents types that support comparison operators
 type NumericTypes interface {
@@ -18,19 +27,11 @@ type BasicTypes interface {
 }
 
 type Validator[T any] interface {
-	Validate(T) []string
+	Validate(T) ValidationErrors
 }
 
-type FuncValidator[T any] func(T) []string
+type FuncValidator[T any] func(T) ValidationErrors
 
-func (f FuncValidator[T]) Validate(v T) []string {
+func (f FuncValidator[T]) Validate(v T) ValidationErrors {
 	return f(v)
-}
-
-func CompactValidate[T any](validator Validator[T], value T) error {
-	errs := validator.Validate(value)
-	if len(errs) == 0 {
-		return nil
-	}
-	return errors.New(strings.Join(errs, "\n"))
 }

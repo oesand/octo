@@ -1,18 +1,20 @@
 package validate
 
-func Struct[T any](fields ...Validator[*T]) Validator[*T] {
-	return &structValidator[T]{
+// Struct returns a validator for pointer-to-struct values that runs the
+// provided field validators and aggregates their errors.
+func Struct[Struct any](fields ...Validator[*Struct]) Validator[*Struct] {
+	return &structValidator[Struct]{
 		fields: fields,
 	}
 }
 
-type structValidator[T any] struct {
-	fields []Validator[*T]
+type structValidator[Struct any] struct {
+	fields []Validator[*Struct]
 }
 
-func (s *structValidator[T]) Validate(value *T) []string {
+func (validator *structValidator[Struct]) Validate(value *Struct) ValidationErrors {
 	var errors []string
-	for _, field := range s.fields {
+	for _, field := range validator.fields {
 		errors = append(errors, field.Validate(value)...)
 	}
 	return errors

@@ -6,7 +6,10 @@ import (
 	"unicode/utf8"
 )
 
-// Regex creates a condition that validates a string matches the given regular expression.
+// Regex returns a validator that checks the given string matches the provided
+// regular expression.
+//
+// It panics if `regex` is nil.
 func Regex(regex *regexp.Regexp) Validator[string] {
 	if regex == nil {
 		panic("octo: regex is nil")
@@ -18,14 +21,15 @@ type stringRegexValidator struct {
 	regex *regexp.Regexp
 }
 
-func (c *stringRegexValidator) Validate(value string) []string {
-	if !c.regex.MatchString(value) {
+func (validator *stringRegexValidator) Validate(value string) ValidationErrors {
+	if !validator.regex.MatchString(value) {
 		return []string{"mismatch expected pattern"}
 	}
 	return nil
 }
 
-// RunesExactly creates a condition that validates a string has exactly the specified length.
+// RunesExactly returns a validator that ensures the string contains exactly
+// `length` runes (Unicode code points).
 func RunesExactly(length int) Validator[string] {
 	return &stringLengthValidator{length}
 }
@@ -34,14 +38,15 @@ type stringLengthValidator struct {
 	length int
 }
 
-func (c *stringLengthValidator) Validate(value string) []string {
-	if utf8.RuneCountInString(value) != c.length {
-		return []string{fmt.Sprintf("must have exactly %d characters", c.length)}
+func (validator *stringLengthValidator) Validate(value string) ValidationErrors {
+	if utf8.RuneCountInString(value) != validator.length {
+		return []string{fmt.Sprintf("must have exactly %d characters", validator.length)}
 	}
 	return nil
 }
 
-// MinRunes creates a condition that validates a string has at least the specified runes.
+// MinRunes returns a validator that ensures the string contains at least
+// `min` runes (Unicode code points).
 func MinRunes(min int) Validator[string] {
 	return &stringMinValidator{min}
 }
@@ -50,14 +55,15 @@ type stringMinValidator struct {
 	min int
 }
 
-func (c *stringMinValidator) Validate(value string) []string {
-	if utf8.RuneCountInString(value) < c.min {
-		return []string{fmt.Sprintf("must have at least %d characters", c.min)}
+func (validator *stringMinValidator) Validate(value string) ValidationErrors {
+	if utf8.RuneCountInString(value) < validator.min {
+		return []string{fmt.Sprintf("must have at least %d characters", validator.min)}
 	}
 	return nil
 }
 
-// MaxRunes creates a condition that validates a string has at most the specified length.
+// MaxRunes returns a validator that ensures the string contains at most
+// `max` runes (Unicode code points).
 func MaxRunes(max int) Validator[string] {
 	return &stringMaxValidator{max}
 }
@@ -66,9 +72,9 @@ type stringMaxValidator struct {
 	max int
 }
 
-func (c *stringMaxValidator) Validate(value string) []string {
-	if utf8.RuneCountInString(value) > c.max {
-		return []string{fmt.Sprintf("must have at most %d characters", c.max)}
+func (validator *stringMaxValidator) Validate(value string) ValidationErrors {
+	if utf8.RuneCountInString(value) > validator.max {
+		return []string{fmt.Sprintf("must have at most %d characters", validator.max)}
 	}
 	return nil
 }
