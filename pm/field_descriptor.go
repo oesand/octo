@@ -1,19 +1,19 @@
 package pm
 
-type Field[T any] interface {
+type Field[Struct any] interface {
 	GetName() string
-	GetValue(*T) any
+	GetValue(*Struct) any
 }
 
-type FieldDescriptor[T any, F any] struct {
+type FieldDescriptor[Struct any, Field any] struct {
 	Name  string
-	Value func(*T) F
+	Value func(*Struct) Field
 }
 
-func (desc FieldDescriptor[T, F]) GetName() string {
+func (desc FieldDescriptor[Struct, F]) GetName() string {
 	return desc.Name
 }
 
-func (desc FieldDescriptor[T, F]) GetValue(s *T) any {
+func (desc FieldDescriptor[Struct, F]) GetValue(s *Struct) any {
 	return desc.Value(s)
 }

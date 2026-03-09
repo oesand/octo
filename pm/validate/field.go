@@ -25,8 +25,8 @@ func (validator *fieldValidator[Struct, Field]) Validate(parent *Struct) Validat
 	var errors []string
 	name := validator.descriptor.Name
 	value := validator.descriptor.Value(parent)
-	for _, validator := range validator.validators {
-		for _, err := range validator.Validate(value) {
+	for _, v := range validator.validators {
+		for _, err := range v.Validate(value) {
 			errors = append(errors, fmt.Sprintf("> '%s': %s", name, err))
 		}
 	}

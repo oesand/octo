@@ -33,3 +33,52 @@ func TestMaxCount(t *testing.T) {
 		t.Fatalf("expected valid for count 2, got %v", res)
 	}
 }
+
+func TestSlice_ElementValidatorStopsAtFirstError(t *testing.T) {
+	// element validator returns error for value "bad"
+	elemValidator := validate.FuncValidator[string](func(s string) validate.ValidationErrors {
+		if s == "bad" {
+			return []string{"element invalid"}
+		}
+		return nil
+	})
+
+	v := validate.Slice(elemValidator)
+
+	res := v.Validate([]string{"ok", "bad", "x"})
+	if res.IsValid() {
+		t.Fatalf("expected invalid for element 'bad'")
+	}
+
+	if got := res.Error(); got != "> [1]: element invalid" {
+		t.Fatalf("unexpected error; want %q, got %q", "> [1]: element invalid", got)
+	}
+}
+
+func TestSlice_ElementMultipleErrorsAreAggregated(t *testing.T) {
+	// two validators that both trigger for the same element
+	v1 := validate.FuncValidator[string](func(s string) validate.ValidationErrors {
+		if s == "x" {
+			return []string{"err1"}
+		}
+		return nil
+	})
+	v2 := validate.FuncValidator[string](func(s string) validate.ValidationErrors {
+		if s == "x" {
+			return []string{"err2"}
+		}
+		return nil
+	})
+
+	v := validate.Slice(v1, v2)
+
+	res := v.Validate([]string{"x"})
+	if res.IsValid() {
+		t.Fatalf("expected invalid for element 'x'")
+	}
+
+	want := "> [0]: err1\n> [0]: err2"
+	if got := res.Error(); got != want {
+		t.Fatalf("unexpected aggregated errors; want %q, got %q", want, got)
+	}
+}

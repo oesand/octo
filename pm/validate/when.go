@@ -24,3 +24,14 @@ func (cond *whenConditionValidator[T]) Validate(v T) ValidationErrors {
 	}
 	return nil
 }
+
+// WhenNotNil returns a validator for pointer-to-struct values that runs
+// the provided validators only when the pointer is non-nil. This is a
+// convenience wrapper around `When` that checks `v != nil` before
+// executing the nested validators, preventing nil dereferences in
+// validators that assume a non-nil receiver.
+func WhenNotNil[Struct any](validators ...Validator[*Struct]) Validator[*Struct] {
+	return When(func(v *Struct) bool {
+		return v != nil
+	}, validators...)
+}
