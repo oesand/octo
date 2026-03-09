@@ -1,4 +1,4 @@
-package validate
+package pm
 
 type Caser interface {
 	Convert(string) string
