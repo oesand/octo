@@ -6,7 +6,7 @@ func scanForMediator(pkg packages.Package) {
 	for _, name := range scope.Names() {
 		structType := scope.Lookup(name).Type()
 
-		_, named, _, ok := splitStructType(structType)
+		_, named, _, ok := splitPtrStructType(structType)
 		if !ok || !isImplementsMediatrHandlers(named){
 			continue
 		}

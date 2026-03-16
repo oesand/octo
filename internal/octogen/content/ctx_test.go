@@ -9,6 +9,7 @@ import (
 func TestImports(t *testing.T) {
 	tests := []struct {
 		name    string
+		current string
 		imports []string
 		want    map[string]string
 	}{
@@ -33,15 +34,33 @@ func TestImports(t *testing.T) {
 				"test1": "lol.com/test",
 			},
 		},
+		{
+			name:    "ignore current package",
+			current: "example.com/test",
+			imports: []string{
+				"example.com/test",
+				"lol.com/test",
+			},
+			want: map[string]string{
+				"test": "lol.com/test",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := NewCtx("") // TODO: add test for ignore same package
+			ctx := NewCtx(tt.current)
 			for _, pkg := range tt.imports {
 				ctx.Import(pkg)
 			}
 
-			got := maps.Collect(ctx.Imports())
+			got := maps.Collect[string, string](func(yield func(string, string) bool) {
+				c := ctx.(*renderCtx)
+				for _, data := range c.imports {
+					if !yield(data.alias, data.path) {
+						return
+					}
+				}
+			})
 			if !reflect.DeepEqual(tt.want, got) {
 				t.Errorf("got = %v, want %v", got, tt.want)
 			}

@@ -48,10 +48,15 @@ func (r *packageRenderer) buffer() *bytes.Buffer {
 	b.WriteString("\n\n")
 
 	b.WriteString("import (\n")
-	b.WriteString("\t\"github.com/oesand/octo\"\n")
+	for alias, path := range r.ctx.Imports() {
+		b.WriteRune('\t')
 
-	for alias, imp := range r.ctx.Imports() {
-		b.WriteString(fmt.Sprintf("\t%s \"%s\"\n", alias, imp))
+		if alias != "" {
+			b.WriteString(alias)
+			b.WriteRune(' ')
+		}
+
+		fmt.Fprintf(&b, "\"%s\"\n", path)
 	}
 
 	b.WriteString(")\n")

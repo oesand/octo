@@ -30,13 +30,16 @@ func (r *injectRenderer) OriginalLine() int {
 func (r *injectRenderer) RenderInject(ctx content.RenderContext, b *bytes.Buffer) {
 	returningRenderer := r.returnType.Render(ctx, typing.DeclOp)
 
+	b.WriteRune('\t')
+	b.WriteString(ctx.ImportAlias(content.OctoModule))
+
 	switch r.key {
 	case "":
-		b.WriteString("\tocto.Inject(container, ")
+		b.WriteString(".Inject(container, ")
 	case "~":
-		b.WriteString("\tocto.TryInject(container, ")
+		b.WriteString(".TryInject(container, ")
 	default:
-		b.WriteString("\tocto.InjectNamed(container, \"")
+		b.WriteString(".InjectNamed(container, \"")
 		b.WriteString(r.key)
 		b.WriteString("\", ")
 	}

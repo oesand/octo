@@ -37,133 +37,174 @@ func Parse(module, dir string) ([]content.PackageRenderer, []string, []error) {
 			}
 
 			for rootNode := range ast.Preorder(file) {
-				injectFunc, ok := rootNode.(*ast.FuncDecl)
-				if !ok {
-					continue
-				}
+				switch rootDecl := rootNode.(type) {
+				case *ast.Ident:
+					var structType types.Type
+					{
+						if rootDecl.Obj == nil || rootDecl.Obj.Kind != ast.Var ||
+							rootDecl.Obj.Decl == nil {
+							continue
+						}
 
-				if injectFunc.Type.TypeParams.NumFields() > 0 {
-					parseCtx.AddWarn(injectFunc.Pos(), "expect no generics in declaration function")
-				}
+						valueSpec, ok := rootDecl.Obj.Decl.(*ast.ValueSpec)
+						if !ok || len(valueSpec.Values) != 1 {
+							continue
+						}
 
-				if injectFunc.Type.Params.NumFields() > 0 {
-					parseCtx.AddWarn(injectFunc.Pos(), "expect no arguments in declaration function")
-				}
+						call, ok := valueSpec.Values[0].(*ast.CallExpr)
+						if !ok {
+							continue
+						}
 
-				if injectFunc.Type.Results.NumFields() > 0 {
-					parseCtx.AddWarn(injectFunc.Pos(), "expect no returns in declaration function")
-				}
+						name, genericExp := lookOctogenGenericCall(call.Fun, octogenAlias)
+						if name != "Fields" {
+							continue
+						}
 
-				var declaredInjects []injects.InjectRenderer
-				for bodyDecl := range ast.Preorder(injectFunc.Body) {
-					call, ok := bodyDecl.(*ast.CallExpr)
-					if !ok {
-						continue
+						structType = pkg.TypesInfo.TypeOf(genericExp)
+						if structType == nil {
+							parseCtx.AddErr(rootDecl.Pos(), "unknown struct type")
+							continue
+						}
 					}
 
-					if name := lookOctogenCall(call.Fun, octogenAlias); name == "Inject" {
-						var funcObj *types.Func
-						var injectKey string
-						{ // Extract type info from Inject(...)
-							if len(call.Args) == 0 {
-								parseCtx.AddErr(call.Pos(), "injecting function not passed")
-								continue
-							}
-							if len(call.Args) > 2 {
-								parseCtx.AddErr(call.Pos(), "too many arguments, maximum two arguments")
-								continue
-							}
+					line := parseCtx.GetLine(rootDecl.Pos())
+					fieldsRenderer, rendererImports, err := parseStructFields(line, rootDecl.Name, structType)
+					if err != nil {
+						parseCtx.AddError(rootDecl.Pos(), err)
+					} else {
+						blocks = append(blocks, fieldsRenderer)
+						renderCtx.Import(content.PrimitivesModule)
+						for _, injectPkg := range rendererImports {
+							renderCtx.Import(injectPkg)
+						}
+					}
 
-							if len(call.Args) > 1 {
-								if bl, ok := call.Args[1].(*ast.BasicLit); ok && bl.Kind == token.STRING {
-									injectKey = bl.Value[1 : len(bl.Value)-1] // strip quotes
-								} else {
-									parseCtx.AddErr(call.Pos(), "unexpected second argument, support only string")
+				case *ast.FuncDecl:
+					if rootDecl.Type.TypeParams.NumFields() > 0 {
+						parseCtx.AddWarn(rootDecl.Pos(), "expect no generics in declaration function")
+					}
+
+					if rootDecl.Type.Params.NumFields() > 0 {
+						parseCtx.AddWarn(rootDecl.Pos(), "expect no arguments in declaration function")
+					}
+
+					if rootDecl.Type.Results.NumFields() > 0 {
+						parseCtx.AddWarn(rootDecl.Pos(), "expect no returns in declaration function")
+					}
+
+					var declaredInjects []injects.InjectRenderer
+					for bodyDecl := range ast.Preorder(rootDecl.Body) {
+						call, ok := bodyDecl.(*ast.CallExpr)
+						if !ok {
+							continue
+						}
+
+						if name := lookOctogenCall(call.Fun, octogenAlias); name == "Inject" {
+							var funcObj *types.Func
+							var injectKey string
+							{ // Extract type info from Inject(...)
+								if len(call.Args) == 0 {
+									parseCtx.AddErr(call.Pos(), "injecting function not passed")
+									continue
+								}
+								if len(call.Args) > 2 {
+									parseCtx.AddErr(call.Pos(), "too many arguments, maximum two arguments")
+									continue
+								}
+
+								if len(call.Args) > 1 {
+									if bl, ok := call.Args[1].(*ast.BasicLit); ok && bl.Kind == token.STRING {
+										injectKey = bl.Value[1 : len(bl.Value)-1] // strip quotes
+									} else {
+										parseCtx.AddErr(call.Pos(), "unexpected second argument, support only string")
+										continue
+									}
+								}
+
+								var funcIdent *ast.Ident
+								switch et := call.Args[0].(type) {
+								case *ast.Ident:
+									funcIdent = et
+								case *ast.SelectorExpr:
+									funcIdent = et.Sel
+								default:
+									parseCtx.AddErr(call.Pos(), "not supported injecting target")
+									continue
+								}
+
+								funcObj, ok = pkg.TypesInfo.ObjectOf(funcIdent).(*types.Func)
+								if !ok {
+									parseCtx.AddErr(call.Pos(), "not supported injecting target")
 									continue
 								}
 							}
 
-							var funcIdent *ast.Ident
-							switch et := call.Args[0].(type) {
-							case *ast.Ident:
-								funcIdent = et
-							case *ast.SelectorExpr:
-								funcIdent = et.Sel
-							default:
-								parseCtx.AddErr(call.Pos(), "not supported injecting target")
-								continue
+							line := parseCtx.GetLine(call.Pos())
+							inject, injectImports, err := parseInjectFunc(line, injectKey, funcObj)
+							if err != nil {
+								parseCtx.AddError(call.Pos(), err)
+							} else {
+								declaredInjects = append(declaredInjects, inject)
+								for _, injectPkg := range injectImports {
+									renderCtx.Import(injectPkg)
+								}
 							}
 
-							funcObj, ok = pkg.TypesInfo.ObjectOf(funcIdent).(*types.Func)
-							if !ok {
-								parseCtx.AddErr(call.Pos(), "not supported injecting target")
-								continue
-							}
+							continue
 						}
 
-						line := parseCtx.GetLine(call.Pos())
-						inject, injectImports, err := parseInjectFunc(line, injectKey, funcObj)
-						if err != nil {
-							parseCtx.AddError(call.Pos(), err)
-						} else {
-							declaredInjects = append(declaredInjects, inject)
-							for _, injectPkg := range injectImports {
-								renderCtx.Import(injectPkg)
-							}
-						}
+						if name, genericExp := lookOctogenGenericCall(call.Fun, octogenAlias); name == "Inject" {
+							var structType types.Type
+							var injectKey string
+							{
+								if len(call.Args) > 1 {
+									parseCtx.AddErr(call.Pos(), "too many arguments, maximum one argument")
+									continue
+								}
 
-						continue
-					}
+								if len(call.Args) > 0 {
+									if bl, ok := call.Args[0].(*ast.BasicLit); ok && bl.Kind == token.STRING {
+										injectKey = bl.Value[1 : len(bl.Value)-1] // strip quotes
+									} else {
+										parseCtx.AddErr(call.Pos(), "unexpected name argument, support only string")
+										continue
+									}
+								}
 
-					if name, genericExp := lookOctogenGenericCall(call, octogenAlias); name == "Inject" {
-						var structType types.Type
-						var injectKey string
-						{
-							if len(call.Args) > 1 {
-								parseCtx.AddErr(call.Pos(), "too many arguments, maximum one argument")
-								continue
-							}
-
-							if len(call.Args) > 0 {
-								if bl, ok := call.Args[0].(*ast.BasicLit); ok && bl.Kind == token.STRING {
-									injectKey = bl.Value[1 : len(bl.Value)-1] // strip quotes
-								} else {
-									parseCtx.AddErr(call.Pos(), "unexpected name argument, support only string")
+								structType = pkg.TypesInfo.TypeOf(genericExp)
+								if structType == nil {
+									parseCtx.AddErr(call.Pos(), "unknown injecting type")
 									continue
 								}
 							}
 
-							structType = pkg.TypesInfo.TypeOf(genericExp)
-							if structType == nil {
-								parseCtx.AddErr(call.Pos(), "unknown injecting type")
-								continue
+							line := parseCtx.GetLine(call.Pos())
+							inject, injectImports, err := parseInjectStruct(line, injectKey, structType)
+							if err != nil {
+								parseCtx.AddError(call.Pos(), err)
+							} else {
+								declaredInjects = append(declaredInjects, inject)
+								for _, injectPkg := range injectImports {
+									renderCtx.Import(injectPkg)
+								}
 							}
-						}
 
-						line := parseCtx.GetLine(call.Pos())
-						inject, injectImports, err := parseInjectStruct(line, injectKey, structType)
-						if err != nil {
-							parseCtx.AddError(call.Pos(), err)
-						} else {
-							declaredInjects = append(declaredInjects, inject)
-							for _, injectPkg := range injectImports {
-								renderCtx.Import(injectPkg)
-							}
+							continue
 						}
-
-						continue
 					}
-				}
 
-				if parseCtx.NoErrs() && len(declaredInjects) > 0 {
-					injectFuncName := injectFunc.Name.Name
+					if parseCtx.NoErrs() && len(declaredInjects) > 0 {
+						injectFuncName := rootDecl.Name.Name
 
-					sort.Slice(declaredInjects, func(i, j int) bool {
-						return declaredInjects[i].OriginalLine() < declaredInjects[j].OriginalLine()
-					})
+						sort.Slice(declaredInjects, func(i, j int) bool {
+							return declaredInjects[i].OriginalLine() < declaredInjects[j].OriginalLine()
+						})
 
-					line := parseCtx.GetLine(injectFunc.Pos())
-					blocks = append(blocks, injects.Func(line, injectFuncName, declaredInjects))
+						renderCtx.Import(content.OctoModule)
+						line := parseCtx.GetLine(rootDecl.Pos())
+						blocks = append(blocks, injects.Func(line, injectFuncName, declaredInjects))
+					}
 				}
 			}
 		}
@@ -191,8 +232,8 @@ func lookOctogenCall(exp ast.Expr, octogenAlias string) string {
 	return ""
 }
 
-func lookOctogenGenericCall(exp *ast.CallExpr, octogenAlias string) (string, ast.Expr) {
-	if idx, ok := exp.Fun.(*ast.IndexExpr); ok {
+func lookOctogenGenericCall(exp ast.Expr, octogenAlias string) (string, ast.Expr) {
+	if idx, ok := exp.(*ast.IndexExpr); ok {
 		funcName := lookOctogenCall(idx.X, octogenAlias)
 		if funcName == "" {
 			return "", nil

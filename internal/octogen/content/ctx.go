@@ -1,12 +1,15 @@
 package content
 
 import (
+	"fmt"
 	"iter"
 	"maps"
 	"slices"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/oesand/octo/pm"
 )
 
 func NewCtx(pkgPath string) RenderContext {
@@ -16,35 +19,46 @@ func NewCtx(pkgPath string) RenderContext {
 }
 
 type renderCtx struct {
-	pkgPath       string
-	imports       map[string]string // [alias]: import
-	importAliases map[string]string // [import]: alias
+	pkgPath string
+
+	aliases pm.Set[string]
+	imports map[string]*importData
+}
+
+type importData struct {
+	path           string
+	alias          string
+	redundantAlias bool
 }
 
 func (r *renderCtx) Import(pkg string) {
-	if pkg == "" || pkg == r.pkgPath || pkg == OctoModule {
+	if pkg == "" || pkg == r.pkgPath {
 		return
 	}
 
-	if len(r.imports) == 0 {
-		r.imports = map[string]string{}
-		r.importAliases = map[string]string{}
-	} else if _, ok := r.importAliases[pkg]; ok {
+	if r.imports == nil {
+		r.aliases = pm.Set[string]{}
+		r.imports = map[string]*importData{}
+	} else if _, ok := r.imports[pkg]; ok {
 		return
 	}
 
 	base := pkg[strings.LastIndexByte(pkg, '/')+1:]
 	for i := 0; ; i++ {
 		alias := base
-		if i > 0 || alias == OctoAlias {
+		if i > 0 {
 			alias = base + strconv.Itoa(i)
 		}
-		if _, ok := r.imports[alias]; ok {
+		if r.aliases.Has(alias) {
 			continue
 		}
 
-		r.imports[alias] = pkg
-		r.importAliases[pkg] = alias
+		r.aliases.Add(alias)
+		r.imports[pkg] = &importData{
+			path:           pkg,
+			alias:          alias,
+			redundantAlias: i == 0,
+		}
 		break
 	}
 }
@@ -54,15 +68,16 @@ func (r *renderCtx) ImportAlias(pkg string) string {
 		return ""
 	}
 
-	if pkg == OctoModule {
-		return OctoAlias
-	}
-
-	if len(r.importAliases) == 0 {
+	if len(r.imports) == 0 {
 		panic("no imports")
 	}
 
-	return r.importAliases[pkg]
+	data, ok := r.imports[pkg]
+	if !ok {
+		panic(fmt.Sprintf("no alias found for %s", pkg))
+	}
+
+	return data.alias
 }
 
 func (r *renderCtx) Imports() iter.Seq2[string, string] {
@@ -71,11 +86,15 @@ func (r *renderCtx) Imports() iter.Seq2[string, string] {
 			return
 		}
 
-		aliases := slices.Collect(maps.Keys(r.imports))
-		sort.Strings(aliases)
+		paths := slices.Collect(maps.Keys(r.imports))
+		sort.Strings(paths)
 
-		for _, alias := range aliases {
-			path := r.imports[alias]
+		for _, path := range paths {
+			var alias string
+			if data := r.imports[path]; !data.redundantAlias {
+				alias = data.alias
+			}
+
 			if !yield(alias, path) {
 				break
 			}

@@ -9,10 +9,10 @@ import (
 )
 
 const (
-	OctogenModule = "github.com/oesand/octo/octogen"
-	BuildTag      = "octogen"
-	OctoModule    = "github.com/oesand/octo"
-	OctoAlias     = "octo"
+	OctogenModule    = "github.com/oesand/octo/octogen"
+	PrimitivesModule = "github.com/oesand/octo/pm"
+	OctoModule       = "github.com/oesand/octo"
+	BuildTag         = "octogen"
 )
 
 type PackageRenderer interface {
