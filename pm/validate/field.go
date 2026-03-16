@@ -21,7 +21,7 @@ type fieldValidator[Struct any, Field any] struct {
 	validators []Validator[Field]
 }
 
-func (validator *fieldValidator[Struct, Field]) Validate(parent *Struct) ValidationErrors {
+func (validator *fieldValidator[Struct, Field]) Validate(parent *Struct) Errors {
 	var errors []string
 	name := validator.descriptor.Name
 	value := validator.descriptor.Value(parent)

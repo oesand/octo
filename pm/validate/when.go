@@ -14,7 +14,7 @@ type whenConditionValidator[T any] struct {
 	validators []Validator[T]
 }
 
-func (cond *whenConditionValidator[T]) Validate(v T) ValidationErrors {
+func (cond *whenConditionValidator[T]) Validate(v T) Errors {
 	if cond.condition(v) {
 		var errors []string
 		for _, validator := range cond.validators {

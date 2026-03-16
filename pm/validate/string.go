@@ -21,7 +21,7 @@ type stringRegexValidator struct {
 	regex *regexp.Regexp
 }
 
-func (validator *stringRegexValidator) Validate(value string) ValidationErrors {
+func (validator *stringRegexValidator) Validate(value string) Errors {
 	if !validator.regex.MatchString(value) {
 		return []string{"mismatch expected pattern"}
 	}
@@ -38,7 +38,7 @@ type stringLengthValidator struct {
 	length int
 }
 
-func (validator *stringLengthValidator) Validate(value string) ValidationErrors {
+func (validator *stringLengthValidator) Validate(value string) Errors {
 	if utf8.RuneCountInString(value) != validator.length {
 		return []string{fmt.Sprintf("must have exactly %d characters", validator.length)}
 	}
@@ -55,7 +55,7 @@ type stringMinValidator struct {
 	min int
 }
 
-func (validator *stringMinValidator) Validate(value string) ValidationErrors {
+func (validator *stringMinValidator) Validate(value string) Errors {
 	if utf8.RuneCountInString(value) < validator.min {
 		return []string{fmt.Sprintf("must have at least %d characters", validator.min)}
 	}
@@ -72,7 +72,7 @@ type stringMaxValidator struct {
 	max int
 }
 
-func (validator *stringMaxValidator) Validate(value string) ValidationErrors {
+func (validator *stringMaxValidator) Validate(value string) Errors {
 	if utf8.RuneCountInString(value) > validator.max {
 		return []string{fmt.Sprintf("must have at most %d characters", validator.max)}
 	}

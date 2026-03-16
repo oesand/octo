@@ -17,7 +17,7 @@ type sliceValidator[Element any] struct {
 	validators []Validator[Element]
 }
 
-func (validator *sliceValidator[Element]) Validate(slice []Element) ValidationErrors {
+func (validator *sliceValidator[Element]) Validate(slice []Element) Errors {
 	var errors []string
 	for i, el := range slice {
 		for _, validator := range validator.validators {
@@ -43,7 +43,7 @@ type sliceMinValidator[Element any] struct {
 	minLength int
 }
 
-func (validator *sliceMinValidator[Element]) Validate(slice []Element) ValidationErrors {
+func (validator *sliceMinValidator[Element]) Validate(slice []Element) Errors {
 	if len(slice) < validator.minLength {
 		return []string{fmt.Sprintf("count must be greater than or equal to %v", validator.minLength)}
 	}
@@ -60,7 +60,7 @@ type sliceMaxValidator[Element any] struct {
 	maxLength int
 }
 
-func (validator *sliceMaxValidator[Element]) Validate(slice []Element) ValidationErrors {
+func (validator *sliceMaxValidator[Element]) Validate(slice []Element) Errors {
 	if len(slice) > validator.maxLength {
 		return []string{fmt.Sprintf("count must be less than or equal to %v", validator.maxLength)}
 	}

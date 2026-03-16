@@ -36,7 +36,7 @@ func TestMaxCount(t *testing.T) {
 
 func TestSlice_ElementValidatorStopsAtFirstError(t *testing.T) {
 	// element validator returns error for value "bad"
-	elemValidator := validate.FuncValidator[string](func(s string) validate.ValidationErrors {
+	elemValidator := validate.FuncValidator[string](func(s string) validate.Errors {
 		if s == "bad" {
 			return []string{"element invalid"}
 		}
@@ -57,13 +57,13 @@ func TestSlice_ElementValidatorStopsAtFirstError(t *testing.T) {
 
 func TestSlice_ElementMultipleErrorsAreAggregated(t *testing.T) {
 	// two validators that both trigger for the same element
-	v1 := validate.FuncValidator[string](func(s string) validate.ValidationErrors {
+	v1 := validate.FuncValidator[string](func(s string) validate.Errors {
 		if s == "x" {
 			return []string{"err1"}
 		}
 		return nil
 	})
-	v2 := validate.FuncValidator[string](func(s string) validate.ValidationErrors {
+	v2 := validate.FuncValidator[string](func(s string) validate.Errors {
 		if s == "x" {
 			return []string{"err2"}
 		}

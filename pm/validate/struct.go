@@ -12,7 +12,7 @@ type structValidator[Struct any] struct {
 	validators []Validator[*Struct]
 }
 
-func (validator *structValidator[Struct]) Validate(value *Struct) ValidationErrors {
+func (validator *structValidator[Struct]) Validate(value *Struct) Errors {
 	var errors []string
 	for _, v := range validator.validators {
 		errors = append(errors, v.Validate(value)...)

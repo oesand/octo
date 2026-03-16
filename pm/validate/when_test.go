@@ -24,9 +24,9 @@ func TestWhenConditionRunsValidatorsOnlyWhenTrue(t *testing.T) {
 }
 
 func TestWhenNotNil_SkipsNilAndValidatesPointer(t *testing.T) {
-	v := validate.WhenNotNil(validate.FuncValidator[*int](func(p *int) validate.ValidationErrors {
+	v := validate.WhenNotNil(validate.FuncValidator[*int](func(p *int) validate.Errors {
 		if *p < 1 {
-			return validate.ValidationErrors{"must be at least 1"}
+			return validate.Errors{"must be at least 1"}
 		}
 		return nil
 	}))

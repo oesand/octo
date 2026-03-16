@@ -1,5 +1,13 @@
 package pm
 
+func SetOf[K comparable](items ...K) Set[K] {
+	set := make(map[K]struct{}, len(items))
+	for _, item := range items {
+		set[item] = struct{}{}
+	}
+	return set
+}
+
 // Set represents a simple generic hash set backed by a Go map.
 type Set[K comparable] map[K]struct{}
 

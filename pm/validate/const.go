@@ -4,16 +4,6 @@ import (
 	"strings"
 )
 
-type ValidationErrors []string
-
-func (errs ValidationErrors) IsValid() bool {
-	return len(errs) == 0
-}
-
-func (errs ValidationErrors) Error() string {
-	return strings.Join(errs, "\n")
-}
-
 // NumericTypes represents types that support comparison operators
 type NumericTypes interface {
 	~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 |
@@ -26,12 +16,22 @@ type BasicTypes interface {
 	~string | ~bool | NumericTypes
 }
 
-type Validator[T any] interface {
-	Validate(T) ValidationErrors
+type Errors []string
+
+func (errs Errors) IsValid() bool {
+	return len(errs) == 0
 }
 
-type FuncValidator[T any] func(T) ValidationErrors
+func (errs Errors) Error() string {
+	return strings.Join(errs, "\n")
+}
 
-func (f FuncValidator[T]) Validate(v T) ValidationErrors {
+type Validator[T any] interface {
+	Validate(T) Errors
+}
+
+type FuncValidator[T any] func(T) Errors
+
+func (f FuncValidator[T]) Validate(v T) Errors {
 	return f(v)
 }

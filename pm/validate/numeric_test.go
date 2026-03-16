@@ -12,7 +12,7 @@ func TestMinInt(t *testing.T) {
 	if res := v.Validate(9); res.IsValid() {
 		t.Fatalf("expected invalid for 9")
 	} else if err := res.Error(); err != "must be greater than or equal to 10" {
-		t.Fatalf("unexpected error %s", res.Error())
+		t.Fatalf("unexpected error %s", err)
 	}
 
 	if res := v.Validate(10); !res.IsValid() {
@@ -30,7 +30,7 @@ func TestMaxInt64(t *testing.T) {
 	if res := v.Validate(int64(101)); res.IsValid() {
 		t.Fatalf("expected invalid for 101")
 	} else if err := res.Error(); err != "must be less than or equal to 100" {
-		t.Fatalf("unexpected error %s", res.Error())
+		t.Fatalf("unexpected error %s", err)
 	}
 
 	if res := v.Validate(int64(100)); !res.IsValid() {
@@ -48,7 +48,7 @@ func TestMinFloat(t *testing.T) {
 	if res := v.Validate(3.13); res.IsValid() {
 		t.Fatalf("expected invalid for 3.13")
 	} else if err := res.Error(); err != "must be greater than or equal to 3.14" {
-		t.Fatalf("unexpected error %s", res.Error())
+		t.Fatalf("unexpected error %s", err)
 	}
 
 	if res := v.Validate(3.14); !res.IsValid() {
@@ -66,7 +66,7 @@ func TestMaxUint(t *testing.T) {
 	if res := v.Validate(uint(51)); res.IsValid() {
 		t.Fatalf("expected invalid for 51")
 	} else if err := res.Error(); err != "must be less than or equal to 50" {
-		t.Fatalf("unexpected error %s", res.Error())
+		t.Fatalf("unexpected error %s", err)
 	}
 
 	if res := v.Validate(uint(50)); !res.IsValid() {
