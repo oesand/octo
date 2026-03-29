@@ -8,27 +8,40 @@ import (
 	"github.com/oesand/octo/mediator"
 )
 
+// State is the shared flow state interface required by flow steps.
+// Implementations must report the current step name, whether the
+// flow is finished and which flow the state belongs to.
 type State interface {
 	GetStep() string
 	Finished() bool
 	Flow() string
 }
 
+// Step represents a single flow step. A Step can declare which event
+// types it is interested in via EventTypes and attempts to handle an
+// incoming event via Handle. The generic parameter TState constrains
+// the concrete state type used by the step.
 type Step[TState State] interface {
 	EventTypes() []reflect.Type
 	Handle(context.Context, *octo.Container, TState, Event) (bool, error)
 }
 
+// Initial creates a step that matches the zero/initial step name and
+// evaluates the provided child steps.
 func Initial[TState State](children ...Step[TState]) Step[TState] {
 	return On("", children...)
 }
 
+// On creates a conditional step that matches when the state's
+// GetStep() equals the provided step name and then evaluates children.
 func On[TState State](step string, children ...Step[TState]) Step[TState] {
 	return When(func(state TState) bool {
 		return state.GetStep() == step
 	}, children...)
 }
 
+// When creates a conditional step based on the supplied rule. When the
+// rule returns true the step's children are evaluated.
 func When[TState State](rule func(TState) bool, children ...Step[TState]) Step[TState] {
 	return &whenStep[TState]{
 		rule:     rule,
@@ -60,6 +73,8 @@ func (w *whenStep[TState]) Handle(ctx context.Context, container *octo.Container
 	return false, nil
 }
 
+// OnEvent creates a step that triggers only for events of type TEvent.
+// Child steps must only declare the same event type.
 func OnEvent[TEvent Event, TState State](children ...Step[TState]) Step[TState] {
 	eventType := reflect.TypeFor[TEvent]()
 	for _, child := range children {
@@ -103,6 +118,9 @@ func (w *onEventCondition[TEvent, TState]) Handle(ctx context.Context, container
 	return false, nil
 }
 
+// Do creates a step that invokes the provided handler for the current
+// state. The handler runs synchronously and its returned error is
+// propagated.
 func Do[TState State](handle func(context.Context, TState) error) Step[TState] {
 	return &handleStep[TState]{
 		handler: handle,
@@ -121,6 +139,8 @@ func (w *handleStep[TState]) Handle(ctx context.Context, _ *octo.Container, stat
 	return true, w.handler(ctx, state)
 }
 
+// DoEvent creates a step that handles an event of type TEvent using
+// the supplied handler which receives the typed event.
 func DoEvent[TEvent Event, TState State](handle func(context.Context, TState, TEvent) error) Step[TState] {
 	return &handleEventStep[TEvent, TState]{
 		handler: handle,
@@ -184,6 +204,9 @@ func (s *sendStep[TState, TRequest, TResponse]) Handle(ctx context.Context, cont
 
 */
 
+// Publish creates a step that publishes an event constructed from the
+// current state using the provided function. The event is published via
+// the mediator manager resolved from the container.
 func Publish[TState State, TEvent any](
 	event func(TState) TEvent,
 ) Step[TState] {

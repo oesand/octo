@@ -8,6 +8,9 @@ import (
 	"github.com/oesand/octo/mediator"
 )
 
+// Manager defines storage and execution behaviour for flows. It is
+// responsible for creating states, retrieving and saving state and
+// scheduling or triggering the next processing step.
 type Manager interface {
 	Create(ctx context.Context, uid string, state State) error
 
@@ -18,6 +21,9 @@ type Manager interface {
 	TriggerNext(ctx context.Context, manager *mediator.Manager) error
 }
 
+// MemoryManager is an in-memory implementation of Manager intended
+// primarily for tests and examples. It keeps states in a map keyed
+// by UID.
 type MemoryManager struct {
 	saved map[string]*stateEntry
 }

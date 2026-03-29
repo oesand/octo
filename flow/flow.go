@@ -47,12 +47,12 @@ func (f *flowDeclaration[TState]) EventTypes() []reflect.Type {
 	return f.events
 }
 
-func (f *flowDeclaration[TState]) Handle(ctx context.Context, ev any) error {
-	event, ok := ev.(Event)
+func (f *flowDeclaration[TState]) Handle(ctx context.Context, event any) error {
+	flowEvent, ok := event.(Event)
 	if !ok {
 		return errors.New("flow: not a flow event")
 	}
-	return f.Execute(ctx, event)
+	return f.Execute(ctx, flowEvent)
 }
 
 func (f *flowDeclaration[TState]) Execute(ctx context.Context, event Event) error {

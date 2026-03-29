@@ -48,7 +48,7 @@ func TestBasicFlow(t *testing.T) {
 	)
 
 	ctx := context.Background()
-	uid := flow.NewUID()
+	uid := flow.NewUid()
 
 	manager := &flow.MemoryManager{}
 	octo.InjectValue(container, manager)
@@ -104,7 +104,7 @@ func TestFlow_OnEvent(t *testing.T) {
 	)
 
 	ctx := context.Background()
-	uid := flow.NewUID()
+	uid := flow.NewUid()
 
 	manager := &flow.MemoryManager{}
 	octo.InjectValue(container, manager)
@@ -135,7 +135,7 @@ func TestFlow_DoEvent(t *testing.T) {
 	var nextHandled atomic.Int32
 
 	container := octo.New()
-	flag := flow.NewUID()
+	flag := flow.NewUid()
 
 	testFlow := flow.Declare(
 		container,
@@ -158,7 +158,7 @@ func TestFlow_DoEvent(t *testing.T) {
 	)
 
 	ctx := context.Background()
-	uid := flow.NewUID()
+	uid := flow.NewUid()
 
 	manager := &flow.MemoryManager{}
 	octo.InjectValue(container, manager)

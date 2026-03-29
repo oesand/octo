@@ -11,6 +11,9 @@ type EventHandler[TEvent any] interface {
 	Notification(ctx context.Context, event TEvent) error
 }
 
+// MassEventHandler is an adapter for handlers that can process events
+// of multiple concrete types. It exposes the event types the handler
+// accepts and a generic Handle method invoked for matching events.
 type MassEventHandler interface {
 	EventTypes() []reflect.Type
 	Handle(ctx context.Context, event any) error
