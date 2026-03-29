@@ -5,6 +5,8 @@ import "testing"
 type Struct struct {
 }
 
+func (s *Struct) Name() string { return "" }
+
 type Iface interface {
 	Name() string
 }
@@ -89,6 +91,78 @@ func TestType_Real(t1 *testing.T) {
 		t1.Run(tt.Name, func(t1 *testing.T) {
 			if got := tt.Type.Real(); got != tt.Want {
 				t1.Errorf("Real() = %v, want %v", got, tt.Want)
+			}
+		})
+	}
+}
+
+func TestType_ConvertibleFrom(t1 *testing.T) {
+	type testCase struct {
+		name string
+		from ShadowType
+		to   ShadowType
+		want bool
+	}
+	tests := []testCase{
+		{
+			name: "same interface",
+			from: Type[Iface]{},
+			to:   Type[Iface]{},
+			want: true,
+		},
+		{
+			name: "to interface, struct not implement",
+			from: Type[Struct]{},
+			to:   Type[Iface]{},
+			want: false,
+		},
+		{
+			name: "to interface, pointer struct implement",
+			from: Type[*Struct]{},
+			to:   Type[Iface]{},
+			want: true,
+		},
+		{
+			name: "to interface, string",
+			from: Type[string]{},
+			to:   Type[Iface]{},
+			want: false,
+		},
+		{
+			name: "to interface, int",
+			from: Type[int]{},
+			to:   Type[Iface]{},
+			want: false,
+		},
+		{
+			name: "empty interface, struct",
+			from: Type[Struct]{},
+			to:   Type[EmptyIface]{},
+			want: true,
+		},
+		{
+			name: "empty interface, pointer struct",
+			from: Type[*Struct]{},
+			to:   Type[EmptyIface]{},
+			want: true,
+		},
+		{
+			name: "empty interface, string",
+			from: Type[string]{},
+			to:   Type[EmptyIface]{},
+			want: true,
+		},
+		{
+			name: "empty interface, int",
+			from: Type[int]{},
+			to:   Type[EmptyIface]{},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t1.Run(tt.name, func(t1 *testing.T) {
+			if got := tt.to.ConvertibleFrom(tt.from); got != tt.want {
+				t1.Errorf("ConvertibleFrom() = %v, want %v", got, tt.want)
 			}
 		})
 	}

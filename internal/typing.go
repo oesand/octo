@@ -19,8 +19,17 @@ func (t Type[T]) Real() bool {
 	return t.Zero() != nil
 }
 
+func (t Type[T]) ConvertibleFrom(from ShadowType) bool {
+	if t.Real() {
+		_, ok := from.Zero().(T)
+		return ok
+	}
+	return from.Type().AssignableTo(t.Type())
+}
+
 type ShadowType interface {
 	Type() reflect.Type
 	Zero() any
 	Real() bool
+	ConvertibleFrom(ShadowType) bool
 }

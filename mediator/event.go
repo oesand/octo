@@ -11,18 +11,23 @@ type EventHandler[TEvent any] interface {
 	Notification(ctx context.Context, event TEvent) error
 }
 
+type MassEventHandler interface {
+	EventTypes() []reflect.Type
+	Handle(ctx context.Context, event any) error
+}
+
 // Publish publishes a event to all registered NotificationHandlers.
 // The event is sent to every matching handler until either:
-//   - The context is cancelled, or
+//   - The context is canceled, or
 //   - All handlers have been executed.
-func Publish[T any](
+func Publish(
 	manager *Manager,
 	ctx context.Context,
-	event T,
+	event any,
 ) error {
 	manager.ensureInit()
 
-	decls, has := manager.handlers[reflect.TypeFor[T]()]
+	handlers, has := manager.handlers[reflect.TypeOf(event)]
 	if !has {
 		return nil
 	}
@@ -30,17 +35,16 @@ func Publish[T any](
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	results := make(chan error, len(decls))
-	for _, decl := range decls {
-		handler := decl.Value().(EventHandler[T])
+	results := make(chan error, len(handlers))
+	for _, handle := range handlers {
 		go func() {
-			results <- handler.Notification(ctx, event)
+			results <- handle(ctx, event)
 		}()
 	}
 
 	defer close(results)
 
-	for i := 0; i < len(decls); i++ {
+	for i := 0; i < len(handlers); i++ {
 		select {
 		case <-ctx.Done():
 			return context.Cause(ctx)
