@@ -26,10 +26,12 @@ func Inject(container *octo.Container) *Manager {
 	return manager
 }
 
+type handleEvent func(ctx context.Context, event any) error
+
 type Manager struct {
 	onceInit  sync.Once
 	container *octo.Container
-	handlers  map[reflect.Type][]octo.Declaration
+	handlers  map[reflect.Type][]handleEvent
 }
 
 func (m *Manager) ensureInit() {
@@ -49,9 +51,10 @@ var (
 
 func (m *Manager) doInit() {
 	if m.handlers == nil {
-		m.handlers = make(map[reflect.Type][]octo.Declaration)
+		m.handlers = make(map[reflect.Type][]handleEvent)
 	}
 
+	massHandlerType := reflect.TypeFor[MassEventHandler]()
 	injects := octo.ResolveInjections(m.container)
 	for decl := range injects {
 		if method, ok := decl.Type().MethodByName("Notification"); ok &&
@@ -59,7 +62,28 @@ func (m *Manager) doInit() {
 			method.Type.NumOut() == 1 && method.Type.Out(0).AssignableTo(errorType) {
 
 			eventType := method.Type.In(2)
-			m.handlers[eventType] = append(m.handlers[eventType], decl)
+			m.handlers[eventType] = append(m.handlers[eventType], func(ctx context.Context, event any) error {
+				handler := decl.Value()
+				values := []reflect.Value{
+					reflect.ValueOf(handler),
+					reflect.ValueOf(ctx),
+					reflect.ValueOf(event),
+				}
+				err := method.Func.Call(values)[0].Interface()
+				if err != nil {
+					return err.(error)
+				}
+				return nil
+			})
+			continue
+		}
+		if decl.Type().Implements(massHandlerType) {
+			handler := decl.Value().(MassEventHandler)
+			for _, eventType := range handler.EventTypes() {
+				m.handlers[eventType] = append(m.handlers[eventType], func(ctx context.Context, event any) error {
+					return handler.Handle(ctx, event)
+				})
+			}
 		}
 	}
 }

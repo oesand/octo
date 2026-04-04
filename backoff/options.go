@@ -6,7 +6,6 @@ type Option func(*backOffOptions)
 type backOffOptions struct {
 	attempts  int
 	behaviour Behaviour
-	catchErrX bool
 }
 
 // WithMaxAttempts sets the maximum number of retry attempts.
@@ -20,12 +19,5 @@ func WithMaxAttempts(val int) Option {
 func WithDefaultBehaviour(val Behaviour) Option {
 	return func(o *backOffOptions) {
 		o.behaviour = val
-	}
-}
-
-// WithErrX enables errx catch
-func WithErrX() Option {
-	return func(o *backOffOptions) {
-		o.catchErrX = true
 	}
 }

@@ -3,7 +3,6 @@ package backoff
 import (
 	"context"
 	"errors"
-	"github.com/oesand/octo/errx"
 	"runtime/debug"
 	"time"
 )
@@ -41,18 +40,7 @@ func BackOff(ctx context.Context, op func(context.Context) error, options ...Opt
 			maxAttempts: opts.attempts,
 		})
 
-		var errxWrap *errx.ErrWrap
-		if opts.catchErrX {
-			errxWrap = errx.Try(func() {
-				err = op(ctx)
-			})
-
-			if errxWrap != nil {
-				err = errxWrap.Unwrap()
-			}
-		} else {
-			err = op(ctx)
-		}
+		err = op(ctx)
 
 		if err == nil {
 			break
@@ -63,12 +51,6 @@ func BackOff(ctx context.Context, op func(context.Context) error, options ...Opt
 		var wp *BackOffWrap
 		if errors.As(err, &wp) {
 			behaviour = wp.Behaviour
-		} else if errxWrap != nil {
-			wp = &BackOffWrap{
-				error:      err,
-				StackTrace: errxWrap.StackTrace,
-			}
-			err = wp
 		}
 
 		if opts.attempts > 0 && attempt >= opts.attempts {
