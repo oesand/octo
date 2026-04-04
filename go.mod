@@ -1,4 +1,4 @@
-module github.com/oesand/octo
+module github.com/oesand/octo/v2
 
 go 1.25.0
 
