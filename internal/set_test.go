@@ -1,15 +1,15 @@
-package pm_test
+package internal_test
 
 import (
 	"reflect"
 	"sort"
 	"testing"
 
-	"github.com/oesand/octo/pm"
+	"github.com/oesand/octo/internal"
 )
 
 func TestSet_Add_Has_Del(t *testing.T) {
-	var s pm.Set[string]
+	var s internal.Set[string]
 
 	// Initially empty
 	if s.Has("a") {
@@ -41,8 +41,8 @@ func TestSet_Add_Has_Del(t *testing.T) {
 }
 
 func TestSet_CopyFrom(t *testing.T) {
-	src := pm.Set[int]{1: {}, 2: {}, 3: {}}
-	var dst pm.Set[int]
+	src := internal.Set[int]{1: {}, 2: {}, 3: {}}
+	var dst internal.Set[int]
 
 	dst.CopyFrom(src)
 
@@ -60,7 +60,7 @@ func TestSet_CopyFrom(t *testing.T) {
 }
 
 func TestSet_Values(t *testing.T) {
-	s := pm.Set[int]{3: {}, 1: {}, 2: {}}
+	s := internal.Set[int]{3: {}, 1: {}, 2: {}}
 	values := s.Values()
 	sort.Ints(values)
 
@@ -71,7 +71,7 @@ func TestSet_Values(t *testing.T) {
 }
 
 func TestSet_NilBehavior(t *testing.T) {
-	var s pm.Set[string]
+	var s internal.Set[string]
 
 	// Has should return false on nil set
 	if s.Has("x") {

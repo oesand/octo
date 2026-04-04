@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/oesand/octo"
-	"github.com/oesand/octo/pm"
+	"github.com/oesand/octo/internal"
 )
 
 const DefaultJanitorInterval = 1 * time.Minute
@@ -39,7 +39,7 @@ func New(options ...Option) *MemCache {
 // MemCache represents a thread-safe in-memory cache with key-based locking.
 // Each entry expires automatically after a given duration and is purged by a janitor goroutine.
 type MemCache struct {
-	keyedMu pm.KeyMutex[string]
+	keyedMu KeyMutex[string]
 	entries sync.Map
 
 	usageEvictor usageEvictor
@@ -99,7 +99,7 @@ func (cache *MemCache) janitorPurge() bool {
 	now := time.Now()
 
 	var remainEntries bool
-	var cleanKeys pm.Set[string]
+	var cleanKeys internal.Set[string]
 
 	cache.entries.Range(func(k, e interface{}) bool {
 		key := k.(string)

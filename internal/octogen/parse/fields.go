@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"go/types"
 
+	"github.com/oesand/octo/internal"
 	"github.com/oesand/octo/internal/octogen/content"
 	"github.com/oesand/octo/internal/octogen/content/structs"
 	"github.com/oesand/octo/internal/octogen/typing"
-	"github.com/oesand/octo/pm"
 )
 
 func parseStructFields(originalLine int, descName string, typ types.Type) (content.FileBlockRenderer, []string, error) {
@@ -17,7 +17,7 @@ func parseStructFields(originalLine int, descName string, typ types.Type) (conte
 		return nil, nil, errors.New("unexpected type, supported only struct")
 	}
 
-	imports := pm.Set[string]{}
+	imports := internal.Set[string]{}
 	structRender, err := parseStructTypeRender(imports, named)
 	if err != nil {
 		return nil, nil, err

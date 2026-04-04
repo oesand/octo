@@ -6,9 +6,9 @@ import (
 	"go/types"
 	"strings"
 
+	"github.com/oesand/octo/internal"
 	"github.com/oesand/octo/internal/octogen/content/injects"
 	"github.com/oesand/octo/internal/octogen/typing"
-	"github.com/oesand/octo/pm"
 )
 
 func parseInjectStruct(originalLine int, key string, typ types.Type) (injects.InjectRenderer, []string, error) {
@@ -17,7 +17,7 @@ func parseInjectStruct(originalLine int, key string, typ types.Type) (injects.In
 		return nil, nil, errors.New("unexpected type, supported only struct, pointer struct")
 	}
 
-	imports := pm.Set[string]{}
+	imports := internal.Set[string]{}
 	structRender, err := parseStructTypeRender(imports, named)
 	if err != nil {
 		return nil, nil, err
@@ -35,7 +35,7 @@ func parseInjectStruct(originalLine int, key string, typ types.Type) (injects.In
 	return injects.Inject(originalLine, key, structRender, injects.ReturnStruct(structRender, fields)), imports.Values(), nil
 }
 
-func parseStructTypeRender(imports pm.Set[string], named *types.Named) (typing.Renderer, error) {
+func parseStructTypeRender(imports internal.Set[string], named *types.Named) (typing.Renderer, error) {
 	generics := make([]typing.Renderer, named.TypeArgs().Len())
 	for i := 0; i < named.TypeArgs().Len(); i++ {
 		generic, err := parseType(imports, named.TypeArgs().At(i))
@@ -55,7 +55,7 @@ func parseStructTypeRender(imports pm.Set[string], named *types.Named) (typing.R
 	return typing.NewNamed(structPkg, structName, generics), nil
 }
 
-func parseStructFieldsResolves(imports pm.Set[string], structType *types.Struct, embeddedDepth int) ([]injects.ResolveRenderer, error) {
+func parseStructFieldsResolves(imports internal.Set[string], structType *types.Struct, embeddedDepth int) ([]injects.ResolveRenderer, error) {
 	fields := make([]injects.ResolveRenderer, 0, structType.NumFields())
 	for i := 0; i < structType.NumFields(); i++ {
 		field := structType.Field(i)
@@ -96,7 +96,7 @@ func parseStructFieldsResolves(imports pm.Set[string], structType *types.Struct,
 	return fields, nil
 }
 
-func parseEmbeddedFieldRenderer(imports pm.Set[string], typ types.Type, depth int) (injects.ResolveRenderer, error) {
+func parseEmbeddedFieldRenderer(imports internal.Set[string], typ types.Type, depth int) (injects.ResolveRenderer, error) {
 	named, structType, ok := splitStructType(typ)
 	if !ok {
 		return nil, nil

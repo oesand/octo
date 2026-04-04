@@ -74,7 +74,7 @@ func Parse(module, dir string) ([]content.PackageRenderer, []string, []error) {
 						parseCtx.AddError(rootDecl.Pos(), err)
 					} else {
 						blocks = append(blocks, fieldsRenderer)
-						renderCtx.Import(content.PrimitivesModule)
+						renderCtx.Import(content.OctogenModule)
 						for _, injectPkg := range rendererImports {
 							renderCtx.Import(injectPkg)
 						}

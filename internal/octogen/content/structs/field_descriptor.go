@@ -36,7 +36,7 @@ func (f *fieldsDescriptor) RenderFileBlock(ctx content.RenderContext, b *bytes.B
 	b.WriteString(f.name)
 	b.WriteString(" = struct {\n")
 
-	pmAlias := ctx.ImportAlias(content.PrimitivesModule)
+	octogenAlias := ctx.ImportAlias(content.OctogenModule)
 	structType := f.structType.Render(ctx, typing.DeclOp)
 
 	names := slices.Collect(maps.Keys(f.fields))
@@ -46,7 +46,7 @@ func (f *fieldsDescriptor) RenderFileBlock(ctx content.RenderContext, b *bytes.B
 	for _, name := range names {
 		fieldType := f.fields[name].Render(ctx, typing.DeclOp)
 
-		fieldDesc := fmt.Sprintf("%s.FieldDescriptor[%s, %s]", pmAlias, structType, fieldType)
+		fieldDesc := fmt.Sprintf("%s.FieldDescriptor[%s, %s]", octogenAlias, structType, fieldType)
 
 		b.WriteRune('\t')
 		b.WriteString(name)
