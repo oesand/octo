@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/oesand/octo/pm"
+	"github.com/oesand/octo/internal"
 )
 
 func NewCtx(pkgPath string) RenderContext {
@@ -21,7 +21,7 @@ func NewCtx(pkgPath string) RenderContext {
 type renderCtx struct {
 	pkgPath string
 
-	aliases pm.Set[string]
+	aliases internal.Set[string]
 	imports map[string]*importData
 }
 
@@ -37,7 +37,7 @@ func (r *renderCtx) Import(pkg string) {
 	}
 
 	if r.imports == nil {
-		r.aliases = pm.Set[string]{}
+		r.aliases = internal.Set[string]{}
 		r.imports = map[string]*importData{}
 	} else if _, ok := r.imports[pkg]; ok {
 		return

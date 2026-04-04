@@ -1,4 +1,4 @@
-package pm
+package internal
 
 func SetOf[K comparable](items ...K) Set[K] {
 	set := make(map[K]struct{}, len(items))

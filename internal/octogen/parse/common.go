@@ -6,11 +6,11 @@ import (
 	"go/types"
 	"strings"
 
+	"github.com/oesand/octo/internal"
 	"github.com/oesand/octo/internal/octogen/typing"
-	"github.com/oesand/octo/pm"
 )
 
-func parseType(imports pm.Set[string], typ types.Type) (typing.Renderer, error) {
+func parseType(imports internal.Set[string], typ types.Type) (typing.Renderer, error) {
 	switch t := typ.(type) {
 	case *types.Basic:
 		if t.Kind() == types.Invalid {

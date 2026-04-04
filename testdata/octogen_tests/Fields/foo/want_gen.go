@@ -4,27 +4,27 @@
 package foo
 
 import (
-	"github.com/oesand/octo/pm"
+	"github.com/oesand/octo/octogen"
 )
 
 var StructFields = struct {
-	Age pm.FieldDescriptor[Struct, int]
-	Name pm.FieldDescriptor[Struct, string]
-	Other pm.FieldDescriptor[Struct, *Other]
+	Age octogen.FieldDescriptor[Struct, int]
+	Name octogen.FieldDescriptor[Struct, string]
+	Other octogen.FieldDescriptor[Struct, *Other]
 }{
-	Age:pm.FieldDescriptor[Struct, int]{
+	Age:octogen.FieldDescriptor[Struct, int]{
 		Name: "Age",
 		Value: func(s *Struct) int {
 			return s.Age
 		},
 	},
-	Name:pm.FieldDescriptor[Struct, string]{
+	Name:octogen.FieldDescriptor[Struct, string]{
 		Name: "Name",
 		Value: func(s *Struct) string {
 			return s.Name
 		},
 	},
-	Other:pm.FieldDescriptor[Struct, *Other]{
+	Other:octogen.FieldDescriptor[Struct, *Other]{
 		Name: "Other",
 		Value: func(s *Struct) *Other {
 			return s.Other

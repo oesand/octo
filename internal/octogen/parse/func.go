@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"go/types"
 
+	"github.com/oesand/octo/internal"
 	"github.com/oesand/octo/internal/octogen/content/injects"
 	"github.com/oesand/octo/internal/octogen/typing"
-	"github.com/oesand/octo/pm"
 )
 
 func parseInjectFunc(originalLine int, key string, funcObj *types.Func) (injects.InjectRenderer, []string, error) {
@@ -21,7 +21,7 @@ func parseInjectFunc(originalLine int, key string, funcObj *types.Func) (injects
 		return nil, nil, errors.New("not support function with generics")
 	}
 
-	imports := pm.Set[string]{}
+	imports := internal.Set[string]{}
 	resType := funcSig.Results().At(0)
 
 	returned, err := parseType(imports, resType.Type())
