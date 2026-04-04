@@ -28,10 +28,9 @@ type RoutePattern struct {
 // Wildcard parameters (*) can match any characters including slashes
 func ParseRoutePattern(pattern string) (*RoutePattern, error) {
 	if pattern == "" {
-		return nil, fmt.Errorf("template cannot be empty")
+		return nil, fmt.Errorf("pattern cannot be empty")
 	}
 
-	// Normalize: ignore a single trailing slash in the template
 	normalized := strings.TrimSuffix(pattern, "/")
 
 	spans := findPlaceholders(normalized)
