@@ -1,19 +1,14 @@
 package octogen
 
-type Field[Struct any] interface {
-	GetName() string
-	GetValue(*Struct) any
-}
-
 type FieldDescriptor[Struct any, Field any] struct {
 	Name  string
 	Value func(*Struct) Field
 }
 
-func (desc FieldDescriptor[Struct, F]) GetName() string {
+func (desc FieldDescriptor[Struct, Field]) GetName() string {
 	return desc.Name
 }
 
-func (desc FieldDescriptor[Struct, F]) GetValue(s *Struct) any {
+func (desc FieldDescriptor[Struct, Field]) GetValue(s *Struct) Field {
 	return desc.Value(s)
 }
