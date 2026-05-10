@@ -19,6 +19,7 @@ func resolve[T any](container *Container, name string) Declaration {
 		container.resolveCacheMu.RLock()
 		if len(container.resolveCache) > 0 {
 			if decl, ok := container.resolveCache[typeKey]; ok {
+				container.resolveCacheMu.RUnlock()
 				return decl
 			}
 		}
