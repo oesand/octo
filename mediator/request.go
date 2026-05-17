@@ -20,6 +20,8 @@ type Request[T any] interface {
 	Returns(T)
 }
 
+type Empty struct{}
+
 // RequestHandler is a generic interface for handling requests.
 // It takes a request of type TRequest and returns a response of type TResponse (or an error).
 //

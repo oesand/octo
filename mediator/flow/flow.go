@@ -17,6 +17,10 @@ type Flow[TState State] interface {
 }
 
 func Declare[TState State](container *octo.Container, steps ...Step[TState]) Flow[TState] {
+	if len(steps) == 0 {
+		panic(errors.New("flow: must declare at least one step"))
+	}
+
 	var events internal.Set[reflect.Type]
 	for _, child := range steps {
 		events.Add(child.EventTypes()...)
@@ -24,8 +28,12 @@ func Declare[TState State](container *octo.Container, steps ...Step[TState]) Flo
 	events.Add(reflect.TypeFor[*triggerEvent]())
 
 	var zeroState TState
+	flowName := zeroState.Flow()
+	if flowName == "" {
+		panic(errors.New("flow: name cannot be empty"))
+	}
 	return &flowDeclaration[TState]{
-		name:      zeroState.Flow(),
+		name:      flowName,
 		steps:     steps,
 		events:    events.Values(),
 		container: container,
@@ -63,21 +71,23 @@ func (f *flowDeclaration[TState]) Execute(ctx context.Context, event Event) erro
 	manager := octo.Resolve[Manager](f.container)
 
 	var state TState
-	var ptr State = state
-	err := manager.GetState(ctx, event.Uid(), &ptr)
+	err := manager.GetState(ctx, event.Uid(), &state)
 	if err != nil {
 		return err
 	}
-	state = ptr.(TState)
 
 	prevStep := state.GetStep()
 
 	for {
-		handled, err := f.handleNext(ctx, state, event)
-		if !handled {
-			return nil
+		executor := f.findExecutor(state, event)
+		if executor == nil {
+			break
 		}
 
+		var triggerCtx triggerFlowCtx
+		ctx = context.WithValue(ctx, triggerFlowCtxKey, triggerCtx)
+
+		err = executor.Execute(ctx, f.container, state, event)
 		if err != nil {
 			saveErr := manager.SaveError(ctx, event.Uid(), err, event)
 			if saveErr != nil {
@@ -86,25 +96,31 @@ func (f *flowDeclaration[TState]) Execute(ctx context.Context, event Event) erro
 			return err
 		}
 
-		err = manager.SaveState(ctx, event.Uid(), state)
+		err = manager.SaveState(ctx, event.Uid(), state, triggerCtx.transactionCallbacks)
 		if err != nil {
 			return err
 		}
 
-		if state.Finished() || prevStep == state.GetStep() {
+		if state.Finished() || triggerCtx.abort {
 			break
 		}
+
+		if !executor.Recursion() && prevStep == state.GetStep() {
+			break
+		}
+
 		prevStep = state.GetStep()
 	}
 	return nil
 }
 
-func (f *flowDeclaration[TState]) handleNext(ctx context.Context, state TState, event Event) (bool, error) {
+func (f *flowDeclaration[TState]) findExecutor(state TState, event Event) StepExecutor[TState] {
+	var executor StepExecutor[TState]
 	for _, step := range f.steps {
-		handled, err := step.Handle(ctx, f.container, state, event)
-		if handled {
-			return true, err
+		executor = step.Match(state, event)
+		if executor != nil {
+			break
 		}
 	}
-	return false, nil
+	return executor
 }

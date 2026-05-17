@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/oesand/octo/mediator"
 )
@@ -13,12 +14,9 @@ import (
 // scheduling or triggering the next processing step.
 type Manager interface {
 	Create(ctx context.Context, uid string, state State) error
-
-	GetState(ctx context.Context, uid string, state *State) error
+	GetState(ctx context.Context, uid string, state any) error
 	SaveError(ctx context.Context, uid string, err error, event Event) error
-	SaveState(ctx context.Context, uid string, state State) error
-
-	TriggerNext(ctx context.Context, manager *mediator.Manager) error
+	SaveState(ctx context.Context, uid string, state State, callbacks []TransactionCallback) error
 }
 
 // MemoryManager is an in-memory implementation of Manager intended
@@ -37,10 +35,10 @@ type stateEntry struct {
 }
 
 func (m *MemoryManager) Create(ctx context.Context, uid string, state State) error {
-	return m.SaveState(ctx, uid, state)
+	return m.SaveState(ctx, uid, state, nil)
 }
 
-func (m *MemoryManager) GetState(_ context.Context, uid string, state *State) error {
+func (m *MemoryManager) GetState(_ context.Context, uid string, state any) error {
 	if m.saved == nil {
 		return fmt.Errorf("flow: no state found for %s", uid)
 	}
@@ -48,7 +46,7 @@ func (m *MemoryManager) GetState(_ context.Context, uid string, state *State) er
 	if !ok {
 		return fmt.Errorf("flow: no state found for %s", uid)
 	}
-	*state = entry.state
+	reflect.ValueOf(state).Elem().Set(reflect.ValueOf(entry.state))
 	return nil
 }
 
@@ -64,9 +62,16 @@ func (m *MemoryManager) SaveError(_ context.Context, uid string, err error, _ Ev
 	return nil
 }
 
-func (m *MemoryManager) SaveState(_ context.Context, uid string, state State) error {
+func (m *MemoryManager) SaveState(ctx context.Context, uid string, state State, callbacks []TransactionCallback) error {
 	if m.saved == nil {
 		m.saved = make(map[string]*stateEntry)
+	}
+
+	for _, callback := range callbacks {
+		err := callback(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	entry, ok := m.saved[uid]

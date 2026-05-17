@@ -5,7 +5,6 @@ import (
 	"reflect"
 
 	"github.com/oesand/octo"
-	"github.com/oesand/octo/mediator"
 )
 
 // State is the shared flow state interface required by flow steps.
@@ -23,7 +22,29 @@ type State interface {
 // the concrete state type used by the step.
 type Step[TState State] interface {
 	EventTypes() []reflect.Type
-	Handle(context.Context, *octo.Container, TState, Event) (bool, error)
+	Match(TState, Event) StepExecutor[TState]
+}
+
+type StepExecutor[TState State] interface {
+	Recursion() bool
+	Execute(context.Context, *octo.Container, TState, Event) error
+}
+
+type stepExecutorOptions interface {
+	SetRecursion(bool)
+}
+
+type StepOption func(stepExecutorOptions)
+
+// Recursive is a StepOption that enables recursive execution for a step.
+// When applied to a step via Do or DoEvent, it allows the step executor to
+// trigger recursive evaluation of the flow after the step completes.
+// This is useful for workflows where a step's execution may trigger additional
+// flow processing that needs to re-evaluate step conditions.
+func Recursive() StepOption {
+	return func(step stepExecutorOptions) {
+		step.SetRecursion(true)
+	}
 }
 
 // Initial creates a step that matches the zero/initial step name and
@@ -54,23 +75,23 @@ type whenStep[TState State] struct {
 	children []Step[TState]
 }
 
-func (w *whenStep[TState]) EventTypes() []reflect.Type {
+func (step *whenStep[TState]) EventTypes() []reflect.Type {
 	return nil
 }
 
-func (w *whenStep[TState]) Handle(ctx context.Context, container *octo.Container, state TState, event Event) (bool, error) {
-	if !w.rule(state) {
-		return false, nil
+func (step *whenStep[TState]) Match(state TState, event Event) StepExecutor[TState] {
+	if !step.rule(state) {
+		return nil
 	}
 
-	for _, child := range w.children {
-		handled, err := child.Handle(ctx, container, state, event)
-		if handled {
-			return true, err
+	for _, child := range step.children {
+		executor := child.Match(state, event)
+		if executor != nil {
+			return executor
 		}
 	}
 
-	return false, nil
+	return nil
 }
 
 // OnEvent creates a step that triggers only for events of type TEvent.
@@ -100,92 +121,105 @@ func (w *onEventCondition[TEvent, TState]) EventTypes() []reflect.Type {
 	return []reflect.Type{w.eventType}
 }
 
-func (w *onEventCondition[TEvent, TState]) Handle(ctx context.Context, container *octo.Container, state TState, event Event) (bool, error) {
+func (w *onEventCondition[TEvent, TState]) Match(state TState, event Event) StepExecutor[TState] {
 	if event == nil {
-		return false, nil
+		return nil
 	}
 	if _, ok := event.(TEvent); !ok {
-		return false, nil
+		return nil
 	}
 
 	for _, child := range w.children {
-		handled, err := child.Handle(ctx, container, state, event)
-		if handled {
-			return true, err
+		executor := child.Match(state, event)
+		if executor != nil {
+			return executor
 		}
 	}
 
-	return false, nil
+	return nil
 }
 
 // Do creates a step that invokes the provided handler for the current
 // state. The handler runs synchronously and its returned error is
 // propagated.
-func Do[TState State](handle func(context.Context, TState) error) Step[TState] {
-	return &handleStep[TState]{
+func Do[TState State](handle func(context.Context, TState) error, options ...StepOption) Step[TState] {
+	step := &handleStep[TState]{
 		handler: handle,
 	}
+
+	for _, option := range options {
+		option(step)
+	}
+
+	return step
 }
 
 type handleStep[TState State] struct {
-	handler func(context.Context, TState) error
+	recursion bool
+	handler   func(context.Context, TState) error
+}
+
+func (step *handleStep[TState]) SetRecursion(value bool) {
+	step.recursion = value
+}
+
+func (step *handleStep[TState]) Recursion() bool {
+	return step.recursion
 }
 
 func (*handleStep[TState]) EventTypes() []reflect.Type {
 	return nil
 }
 
-func (w *handleStep[TState]) Handle(ctx context.Context, _ *octo.Container, state TState, _ Event) (bool, error) {
-	return true, w.handler(ctx, state)
+func (step *handleStep[TState]) Match(_ TState, _ Event) StepExecutor[TState] {
+	return step
+}
+
+func (step *handleStep[TState]) Execute(ctx context.Context, _ *octo.Container, state TState, _ Event) error {
+	return step.handler(ctx, state)
 }
 
 // DoEvent creates a step that handles an event of type TEvent using
 // the supplied handler which receives the typed event.
-func DoEvent[TEvent Event, TState State](handle func(context.Context, TState, TEvent) error) Step[TState] {
-	return &handleEventStep[TEvent, TState]{
+func DoEvent[TEvent Event, TState State](handle func(context.Context, TState, TEvent) error, options ...StepOption) Step[TState] {
+	step := &handleEventStep[TEvent, TState]{
 		handler: handle,
 	}
+
+	for _, option := range options {
+		option(step)
+	}
+
+	return step
 }
 
 type handleEventStep[TEvent Event, TState State] struct {
-	handler func(context.Context, TState, TEvent) error
+	recursion bool
+	handler   func(context.Context, TState, TEvent) error
+}
+
+func (step *handleEventStep[TEvent, TState]) SetRecursion(value bool) {
+	step.recursion = value
 }
 
 func (*handleEventStep[TEvent, TState]) EventTypes() []reflect.Type {
 	return []reflect.Type{reflect.TypeFor[TEvent]()}
 }
 
-func (w *handleEventStep[TEvent, TState]) Handle(ctx context.Context, _ *octo.Container, state TState, event Event) (bool, error) {
+func (step *handleEventStep[TEvent, TState]) Match(_ TState, event Event) StepExecutor[TState] {
 	if event == nil {
-		return false, nil
+		return nil
 	}
-	if ev, ok := event.(TEvent); ok {
-		return true, w.handler(ctx, state, ev)
+	if _, ok := event.(TEvent); ok {
+		return step
 	}
-	return false, nil
-}
-
-// Publish creates a step that publishes an event constructed from the
-// current state using the provided function. The event is published via
-// the mediator manager resolved from the container.
-func Publish[TState State, TEvent any](
-	event func(TState) TEvent,
-) Step[TState] {
-	return &publishStep[TState, TEvent]{
-		event: event,
-	}
-}
-
-type publishStep[TState State, TEvent any] struct {
-	event func(TState) TEvent
-}
-
-func (*publishStep[TState, TEvent]) EventTypes() []reflect.Type {
 	return nil
 }
 
-func (s *publishStep[TState, TEvent]) Handle(ctx context.Context, container *octo.Container, state TState, _ Event) (bool, error) {
-	manager := octo.Resolve[*mediator.Manager](container)
-	event := s.event(state)
-	return true, mediator.Publish(manager, ctx, event)
+func (step *handleEventStep[TEvent, TState]) Recursion() bool {
+	return step.recursion
+}
+
+func (step *handleEventStep[TEvent, TState]) Execute(ctx context.Context, _ *octo.Container, state TState, event Event) error {
+	return step.handler(ctx, state, event.(TEvent))
 }
