@@ -9,15 +9,17 @@ import (
 	"github.com/oesand/octo/mediator"
 )
 
-// Manager defines storage and execution behaviour for flows. It is
+// Manager defines storage and execution behavior for flows. It is
 // responsible for creating states, retrieving and saving state and
 // scheduling or triggering the next processing step.
 type Manager interface {
 	Create(ctx context.Context, uid string, state State) error
 	GetState(ctx context.Context, uid string, state any) error
-	SaveError(ctx context.Context, uid string, err error, event Event) error
+	SaveError(ctx context.Context, event Event, err error) error
 	SaveState(ctx context.Context, uid string, state State, callbacks []TransactionCallback) error
 }
+
+var _ Manager = &MemoryManager{}
 
 // MemoryManager is an in-memory implementation of Manager intended
 // primarily for tests and examples. It keeps states in a map keyed
@@ -50,7 +52,8 @@ func (m *MemoryManager) GetState(_ context.Context, uid string, state any) error
 	return nil
 }
 
-func (m *MemoryManager) SaveError(_ context.Context, uid string, err error, _ Event) error {
+func (m *MemoryManager) SaveError(_ context.Context, event Event, err error) error {
+	uid := event.Uid()
 	if m.saved == nil {
 		return fmt.Errorf("flow: no state found for %s", uid)
 	}

@@ -1,66 +1,107 @@
-package flow
+package flow_test
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
+
+	"github.com/oesand/octo"
+	"github.com/oesand/octo/mediator/flow"
 )
 
-// TestTransactional_RegistersCallback verifies that Transactional registers a callback
-// in the flow context.
-func TestTransactional_RegistersCallback(t *testing.T) {
-	// Create a flow context
-	flowCtx := &triggerFlowCtx{
-		transactionCallbacks: []TransactionCallback{},
-		abort:                false,
+func TestTransactional_CallbackRunsDuringSaveState(t *testing.T) {
+	var initialHandled atomic.Int32
+	var nextHandled atomic.Int32
+	var callbackCalled atomic.Int32
+
+	container := octo.New()
+
+	testFlow := flow.Declare(
+		container,
+		flow.Initial(
+			flow.Do(func(ctx context.Context, state *TestState) error {
+				initialHandled.Add(1)
+				// register transactional callback
+				flow.Transactional(ctx, func(ctx context.Context) error {
+					callbackCalled.Add(1)
+					return nil
+				})
+				state.Step = "next"
+				return nil
+			}),
+		),
+		flow.On("next", flow.Do(func(ctx context.Context, state *TestState) error {
+			nextHandled.Add(1)
+			state.Step = "finished"
+			return nil
+		})),
+	)
+
+	ctx := context.Background()
+	uid := flow.NewUid()
+
+	manager := &flow.MemoryManager{}
+	octo.InjectValue(container, manager)
+	state := &TestState{}
+	_ = manager.Create(ctx, uid, state)
+
+	err := testFlow.Handle(ctx, flow.TriggerEvent(uid, state.Flow()))
+	if err != nil {
+		t.Error(err)
 	}
 
-	// Create a context with the flow context value
-	ctx := context.WithValue(context.Background(), triggerFlowCtxKey, flowCtx)
-
-	// Create a test callback
-	callbackCalled := false
-	callback := func(ctx context.Context) error {
-		callbackCalled = true
-		return nil
+	if c := initialHandled.Load(); c != 1 {
+		t.Errorf("initial handled %d times", c)
 	}
-
-	// Register the callback
-	Transactional(ctx, callback)
-
-	// Verify the callback was registered
-	if len(flowCtx.transactionCallbacks) != 1 {
-		t.Errorf("expected 1 callback, got %d", len(flowCtx.transactionCallbacks))
+	if c := nextHandled.Load(); c != 1 {
+		t.Errorf("next handled %d times", c)
 	}
-
-	// Execute the registered callback to verify it works
-	if err := flowCtx.transactionCallbacks[0](ctx); err != nil {
-		t.Errorf("callback execution failed: %v", err)
-	}
-
-	if !callbackCalled {
-		t.Error("callback was not called")
+	if c := callbackCalled.Load(); c != 1 {
+		t.Errorf("transactional callback called %d times", c)
 	}
 }
 
-// TestAbort_SetsAbortFlag verifies that Abort sets the abort flag in the flow context.
-func TestAbort_SetsAbortFlag(t *testing.T) {
-	flowCtx := &triggerFlowCtx{
-		transactionCallbacks: []TransactionCallback{},
-		abort:                false,
+func TestAbort_SetsAbortAndStopsFurtherSteps(t *testing.T) {
+	var initialHandled atomic.Int32
+	var nextHandled atomic.Int32
+
+	container := octo.New()
+
+	testFlow := flow.Declare(
+		container,
+		flow.Initial(
+			flow.Do(func(ctx context.Context, state *TestState) error {
+				initialHandled.Add(1)
+				// abort further processing
+				flow.Abort(ctx)
+				state.Step = "next"
+				return nil
+			}),
+		),
+		flow.On("next", flow.Do(func(ctx context.Context, state *TestState) error {
+			nextHandled.Add(1)
+			state.Step = "finished"
+			return nil
+		})),
+	)
+
+	ctx := context.Background()
+	uid := flow.NewUid()
+
+	manager := &flow.MemoryManager{}
+	octo.InjectValue(container, manager)
+	state := &TestState{}
+	_ = manager.Create(ctx, uid, state)
+
+	err := testFlow.Handle(ctx, flow.TriggerEvent(uid, state.Flow()))
+	if err != nil {
+		t.Error(err)
 	}
 
-	ctx := context.WithValue(context.Background(), triggerFlowCtxKey, flowCtx)
-
-	// Verify abort flag is initially false
-	if flowCtx.abort {
-		t.Error("expected abort flag to be false initially")
+	if c := initialHandled.Load(); c != 1 {
+		t.Errorf("initial handled %d times", c)
 	}
-
-	// Call Abort
-	Abort(ctx)
-
-	// Verify abort flag is now true
-	if !flowCtx.abort {
-		t.Error("expected abort flag to be true after Abort()")
+	if c := nextHandled.Load(); c != 0 {
+		t.Errorf("next handled %d times; expected 0 because of Abort", c)
 	}
 }

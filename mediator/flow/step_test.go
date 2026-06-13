@@ -8,42 +8,6 @@ import (
 	"github.com/oesand/octo"
 )
 
-// TestRecursive_ReturnsStepOption verifies that Recursive returns a valid StepOption.
-func TestRecursive_ReturnsStepOption(t *testing.T) {
-	option := Recursive()
-
-	// Verify it's a function that matches StepOption signature
-	if option == nil {
-		t.Error("Recursive() returned nil")
-	}
-
-	// Create a mock stepExecutorOptions to verify it can be called
-	mock := &mockStepExecutorOptions{}
-	option(mock)
-
-	if mock.recursionSet == false {
-		t.Error("option should set recursion to true")
-	}
-}
-
-// TestRecursive_SetsRecursionTrue verifies that Recursive sets the recursion flag to true.
-func TestRecursive_SetsRecursionTrue(t *testing.T) {
-	mock := &mockStepExecutorOptions{
-		recursionSet: false,
-	}
-
-	option := Recursive()
-	option(mock)
-
-	if !mock.recursionSet {
-		t.Error("Recursive() should set recursion to true")
-	}
-
-	if mock.recursionValue != true {
-		t.Error("Recursive() should set recursion value to true")
-	}
-}
-
 // TestRecursive_WithDoStep verifies that Recursive works correctly with Do steps.
 func TestRecursive_WithDoStep(t *testing.T) {
 	callCount := 0
@@ -147,17 +111,17 @@ func TestRecursive_EventTypeFiltering(t *testing.T) {
 	}
 }
 
+func TestNameGetterState_CustomStruct(t *testing.T) {
+	type CustomNameState struct {
+		NameGetterState[CustomNameState]
+	}
+	var state CustomNameState
+	if got := state.Flow(); got != "CustomName" {
+		t.Fatalf("expected NameGetter, got %q", got)
+	}
+}
+
 // ===== Mock Types for Testing =====
-
-type mockStepExecutorOptions struct {
-	recursionSet   bool
-	recursionValue bool
-}
-
-func (m *mockStepExecutorOptions) SetRecursion(value bool) {
-	m.recursionSet = true
-	m.recursionValue = value
-}
 
 type mockState struct {
 	step     string

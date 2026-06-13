@@ -20,6 +20,10 @@ type Request[T any] interface {
 	Returns(T)
 }
 
+// Empty is a sentinel response type for mediator requests that do not
+// require a payload response.
+//
+// Use it when a request merely acts as a command and no result value is needed.
 type Empty struct{}
 
 // RequestHandler is a generic interface for handling requests.

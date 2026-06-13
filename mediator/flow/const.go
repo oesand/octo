@@ -22,10 +22,10 @@ func NewUid() string {
 
 var triggerFlowCtxKey = internal.CtxKey{Key: "flow/triggerCtx"}
 
-// TransactionCallback is a function type that represents a transactional callback
-// within a flow. The callback receives a context and returns an error.
-// Callbacks are typically used to perform side effects that should be executed
-// as part of a transaction managed by the flow manager.
+// TransactionCallback is executed after a flow step has finished and before
+// the new state is persisted.
+//
+// It is registered with Transactional and passed to the manager when saving state.
 type TransactionCallback func(ctx context.Context) error
 
 type triggerFlowCtx struct {
@@ -33,19 +33,20 @@ type triggerFlowCtx struct {
 	abort                bool
 }
 
-// Transactional registers a TransactionCallback to be executed within the current
-// flow's transaction. The callback will be invoked by the flow manager after the
-// current flow event is processed. Multiple callbacks can be registered and will
-// be executed in the order they were registered.
+// Transactional registers a callback to be executed as part of the current
+// flow trigger execution.
+//
+// Registered callbacks are stored in the active flow context and later
+// dispatched when the flow state is saved.
 func Transactional(ctx context.Context, callback TransactionCallback) {
 	flowCtx := ctx.Value(triggerFlowCtxKey).(*triggerFlowCtx)
 	flowCtx.transactionCallbacks = append(flowCtx.transactionCallbacks, callback)
 }
 
-// Abort signals to the flow manager that the current flow should be aborted.
-// Once called, the flow will not proceed with further event processing and
-// any pending steps will be skipped. This is typically used for error handling
-// or to terminate a flow based on certain conditions.
+// Abort marks the active flow execution as aborted.
+//
+// When called from inside a step handler, the flow engine will stop processing
+// any further steps after the current one.
 func Abort(ctx context.Context) {
 	flowCtx := ctx.Value(triggerFlowCtxKey).(*triggerFlowCtx)
 	flowCtx.abort = true

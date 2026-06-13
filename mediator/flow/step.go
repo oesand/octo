@@ -3,6 +3,7 @@ package flow
 import (
 	"context"
 	"reflect"
+	"strings"
 
 	"github.com/oesand/octo"
 )
@@ -14,6 +15,18 @@ type State interface {
 	GetStep() string
 	Finished() bool
 	Flow() string
+}
+
+// NameGetterState is a helper state type that derives the flow name from
+// the state type name by trimming the trailing "State" suffix.
+type NameGetterState[TState any] struct{}
+
+func (state *NameGetterState[TState]) Flow() string {
+	stateType := reflect.TypeFor[TState]()
+	if stateType.Kind() == reflect.Pointer {
+		stateType = stateType.Elem()
+	}
+	return strings.TrimSuffix(stateType.Name(), "State")
 }
 
 // Step represents a single flow step. A Step can declare which event

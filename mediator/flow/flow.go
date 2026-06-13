@@ -84,12 +84,12 @@ func (f *flowDeclaration[TState]) Execute(ctx context.Context, event Event) erro
 			break
 		}
 
-		var triggerCtx triggerFlowCtx
+		triggerCtx := new(triggerFlowCtx)
 		ctx = context.WithValue(ctx, triggerFlowCtxKey, triggerCtx)
 
 		err = executor.Execute(ctx, f.container, state, event)
 		if err != nil {
-			saveErr := manager.SaveError(ctx, event.Uid(), err, event)
+			saveErr := manager.SaveError(ctx, event, err)
 			if saveErr != nil {
 				return fmt.Errorf("flow: fail to save error '%w': %w", err, saveErr)
 			}
