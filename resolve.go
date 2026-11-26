@@ -83,9 +83,8 @@ func resolveValue[T any](container *Container, name string, required bool) (resu
 	}
 
 	container.mu.RLock()
-	defer container.mu.RUnlock()
-
 	decl := resolve[T](container, name)
+	container.mu.RUnlock()
 
 	if decl != nil {
 		if val := decl.Value(); val != nil {
@@ -123,17 +122,20 @@ func TryResolveNamed[T any](container *Container, name string) T {
 }
 
 // ResolveInjections returns an iterator over all registered injects in the container.
+// Each iteration uses a snapshot taken when iteration starts.
 func ResolveInjections(container *Container) iter.Seq[Declaration] {
 	container = containerOrDefault(container)
 	return func(yield func(Declaration) bool) {
 		container.mu.RLock()
-		defer container.mu.RUnlock()
-
+		var injects []Declaration
 		for _, group := range container.injects {
-			for _, inject := range group {
-				if !yield(inject) {
-					return
-				}
+			injects = append(injects, group...)
+		}
+		container.mu.RUnlock()
+
+		for _, inject := range injects {
+			if !yield(inject) {
+				return
 			}
 		}
 	}
@@ -141,32 +143,28 @@ func ResolveInjections(container *Container) iter.Seq[Declaration] {
 
 // ResolveAll returns slice of registered injects in the container
 // if the service's type is assignable to T (implements interface or same type).
+// Registrations are snapshotted before providers are called.
 func ResolveAll[T any](container *Container) []T {
 	container = containerOrDefault(container)
 	container.mu.RLock()
-	defer container.mu.RUnlock()
 
-	var result []T
-	if container.injects == nil {
-		return result
-	}
-
+	var injects []Declaration
 	var typeKey internal.Type[T]
 	if typeKey.Real() {
-		if group, ok := container.injects[typeKey]; ok {
-			for _, inject := range group {
-				result = append(result, inject.Value().(T))
-			}
-		}
+		injects = append(injects, container.injects[typeKey]...)
 	} else {
 		resolveType := typeKey.Type()
 		for groupType, group := range container.injects {
 			if groupType.Type().AssignableTo(resolveType) {
-				for _, inject := range group {
-					result = append(result, inject.Value().(T))
-				}
+				injects = append(injects, group...)
 			}
 		}
+	}
+	container.mu.RUnlock()
+
+	var result []T
+	for _, inject := range injects {
+		result = append(result, inject.Value().(T))
 	}
 	return result
 }
