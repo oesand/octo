@@ -93,6 +93,31 @@ func TestMemCache_Basic(t *testing.T) {
 	}
 }
 
+func TestMemCache_NilValue(t *testing.T) {
+	cache := New()
+	t.Cleanup(func() {
+		Forgot(cache, "nil")
+		JanitorPurge(cache)
+	})
+	providerCalls := 0
+	provider := func() (any, error) {
+		providerCalls++
+		return nil, nil
+	}
+	if value, err := GetOrCreate(cache, "nil", time.Hour, provider); err != nil || value != nil {
+		t.Fatalf("unexpected initial value: %v, %v", value, err)
+	}
+	if found, ttl, value := TryGet[any](cache, "nil"); !found || ttl <= 0 || value != nil {
+		t.Fatalf("unexpected cached nil: found=%v ttl=%v value=%v", found, ttl, value)
+	}
+	if value, err := GetOrCreate(cache, "nil", time.Hour, provider); err != nil || value != nil {
+		t.Fatalf("unexpected cached value: %v, %v", value, err)
+	}
+	if providerCalls != 1 {
+		t.Fatalf("provider called %d times, want 1", providerCalls)
+	}
+}
+
 // Test expiration of keys.
 func TestMemCache_Expiration(t *testing.T) {
 	var mc MemCache

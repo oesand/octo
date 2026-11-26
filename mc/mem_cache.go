@@ -206,6 +206,9 @@ func TryGet[T any](cache *MemCache, key string) (bool, time.Duration, T) {
 	}
 	cache.pushUsedToEvictor(key)
 
+	if entry.value == nil {
+		return true, ttl, nilVal
+	}
 	return true, ttl, entry.value.(T)
 }
 
@@ -226,6 +229,9 @@ func GetOrCreate[T any](cache *MemCache, key string, d time.Duration, provider f
 		entry = e.(*cacheEntry)
 		if time.Now().Before(entry.expiredAt) {
 			cache.pushUsedToEvictor(key)
+			if entry.value == nil {
+				return nilVal, nil
+			}
 			return entry.value.(T), nil
 		}
 	}
