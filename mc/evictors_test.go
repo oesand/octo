@@ -177,3 +177,63 @@ func TestIterWorst_AllowsUpdatesDuringYield(t *testing.T) {
 		})
 	}
 }
+
+type blockingRemoveEvictor struct {
+	usageEvictor
+	removed chan struct{}
+	resume  chan struct{}
+}
+
+func (evc *blockingRemoveEvictor) Remove(key string) {
+	evc.usageEvictor.Remove(key)
+	close(evc.removed)
+	<-evc.resume
+}
+
+func TestJanitorPurge_KeepsRunningWhenEntryAddedDuringCleanup(t *testing.T) {
+	cache := New(WithLruEviction(2))
+	// Represent a running janitor without scheduling a background purge.
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+	cache.janitor = ticker
+	cache.entries.Store("old", &cacheEntry{expiredAt: time.Now().Add(-time.Hour)})
+	cache.usageEvictor.Used("old")
+	evc := &blockingRemoveEvictor{
+		usageEvictor: cache.usageEvictor,
+		removed:      make(chan struct{}),
+		resume:       make(chan struct{}),
+	}
+	cache.usageEvictor = evc
+	defer close(evc.resume)
+
+	done := make(chan bool, 1)
+	go func() { done <- cache.janitorPurge() }()
+	select {
+	case <-evc.removed:
+	case <-time.After(time.Second):
+		t.Fatal("purge did not remove the expired entry")
+	}
+
+	_, err := GetOrCreate(cache, "new", time.Hour, func() (string, error) {
+		return "fresh", nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	evc.resume <- struct{}{}
+
+	select {
+	case stopped := <-done:
+		if stopped {
+			t.Error("janitor stopped despite a newly added entry")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("purge did not complete")
+	}
+	cache.janitorMu.Lock()
+	running := cache.janitor != nil
+	cache.janitorMu.Unlock()
+	if !running {
+		t.Error("new entry was left without a janitor")
+	}
+}

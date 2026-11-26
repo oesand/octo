@@ -153,11 +153,19 @@ func (cache *MemCache) janitorPurge() bool {
 
 	if !remainEntries {
 		cache.janitorMu.Lock()
+		defer cache.janitorMu.Unlock()
+		// Coordinate with writers checking whether a janitor must be started.
+		cache.entries.Range(func(_, _ any) bool {
+			remainEntries = true
+			return false
+		})
+		if remainEntries {
+			return false
+		}
 		if cache.janitor != nil {
 			cache.janitor.Stop()
 			cache.janitor = nil
 		}
-		cache.janitorMu.Unlock()
 		return true
 	}
 	return false
