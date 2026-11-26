@@ -156,6 +156,18 @@ func IncludeHandlers(container *octo.Container) {
 
 ---
 
+## Dependency cycles
+
+Circular dependencies are not supported or detected. Keep provider dependencies acyclic:
+both a direct cycle (`A → A`) and an indirect cycle (`A → B → A`) can deadlock during
+resolution instead of reporting an error. This also applies when mutually dependent
+providers are initialized concurrently.
+
+Break the cycle by moving shared functionality into a separate service or passing the
+required data to a method instead of resolving the other service in its constructor.
+
+---
+
 ## 🧪 Testing
 
 ```bash
