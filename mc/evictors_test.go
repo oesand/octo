@@ -1,10 +1,78 @@
 package mc
 
 import (
+	"iter"
 	"slices"
 	"testing"
 	"time"
 )
+
+type pausedIterationEvictor struct {
+	usageEvictor
+	ready  chan struct{}
+	resume chan struct{}
+}
+
+func (evc *pausedIterationEvictor) IterWorst() iter.Seq[string] {
+	return func(yield func(string) bool) {
+		first := true
+		for key := range evc.usageEvictor.IterWorst() {
+			if first {
+				close(evc.ready)
+				<-evc.resume
+				first = false
+			}
+			if !yield(key) {
+				return
+			}
+		}
+	}
+}
+
+func TestJanitorPurge_DoesNotEvictAfterSpaceIsFreed(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		opt  Option
+	}{
+		{"LRU", WithLruEviction(2)},
+		{"LFU", WithLfuEviction(2)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cache := New(tc.opt)
+			for _, key := range []string{"a", "b", "c"} {
+				if _, err := GetOrCreate(cache, key, time.Hour, func() (string, error) {
+					return key, nil
+				}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			evc := &pausedIterationEvictor{cache.usageEvictor, make(chan struct{}), make(chan struct{})}
+			cache.usageEvictor = evc
+			defer close(evc.resume)
+			done := make(chan struct{})
+			go func() { JanitorPurge(cache); close(done) }()
+			select {
+			case <-evc.ready:
+			case <-time.After(time.Second):
+				t.Fatal("purge did not select eviction candidates")
+			}
+			Forgot(cache, "b")
+			evc.resume <- struct{}{}
+			select {
+			case <-done:
+			case <-time.After(time.Second):
+				t.Fatal("purge did not complete")
+			}
+			for _, key := range []string{"a", "c"} {
+				if found, _, value := TryGet[string](cache, key); !found || value != key {
+					t.Errorf("entry %q was unnecessarily evicted", key)
+				}
+				Forgot(cache, key)
+			}
+			JanitorPurge(cache)
+		})
+	}
+}
 
 func expectPanic(t *testing.T, fn func()) {
 	t.Helper()

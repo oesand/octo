@@ -88,9 +88,23 @@ func (lru *lruEvictor) IterWorst() iter.Seq[string] {
 func (lru *lruEvictor) Remove(key string) {
 	lru.mu.Lock()
 	defer lru.mu.Unlock()
+	lru.remove(key)
+}
 
+func (lru *lruEvictor) RemoveIfExcess(key string) bool {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
+	if lru.evictList.Len() <= lru.capacity {
+		return false
+	}
+	return lru.remove(key)
+}
+
+func (lru *lruEvictor) remove(key string) bool {
 	if ent, has := lru.evictEntries[key]; has {
 		lru.evictList.Remove(ent)
 		delete(lru.evictEntries, key)
+		return true
 	}
+	return false
 }

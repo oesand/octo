@@ -140,12 +140,11 @@ func (cache *MemCache) janitorPurge() bool {
 				var removedCount int
 				for key := range evc.IterWorst() {
 					cache.keyedMu.Lock(key)
-					_, removed := cache.entries.LoadAndDelete(key)
-					cache.removeFromEvictor(key)
-					cache.keyedMu.Unlock(key)
-					if removed {
+					if evc.RemoveIfExcess(key) {
+						cache.entries.Delete(key)
 						removedCount++
 					}
+					cache.keyedMu.Unlock(key)
 
 					if removedCount >= excess {
 						break

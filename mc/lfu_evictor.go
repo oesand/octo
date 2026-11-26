@@ -144,10 +144,22 @@ func (lfu *lfuEvictor) IterWorst() iter.Seq[string] {
 func (lfu *lfuEvictor) Remove(key string) {
 	lfu.mu.Lock()
 	defer lfu.mu.Unlock()
+	lfu.remove(key)
+}
 
+func (lfu *lfuEvictor) RemoveIfExcess(key string) bool {
+	lfu.mu.Lock()
+	defer lfu.mu.Unlock()
+	if len(lfu.entries) <= lfu.capacity {
+		return false
+	}
+	return lfu.remove(key)
+}
+
+func (lfu *lfuEvictor) remove(key string) bool {
 	ent, ok := lfu.entries[key]
 	if !ok {
-		return
+		return false
 	}
 
 	ll := lfu.freqLists[ent.freq]
@@ -157,4 +169,5 @@ func (lfu *lfuEvictor) Remove(key string) {
 	if ll.Len() == 0 {
 		delete(lfu.freqLists, ent.freq)
 	}
+	return true
 }

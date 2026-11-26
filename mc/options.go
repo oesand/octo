@@ -20,4 +20,5 @@ type usageEvictor interface {
 	GetExcess() int
 	IterWorst() iter.Seq[string]
 	Remove(key string)
+	RemoveIfExcess(key string) bool
 }
