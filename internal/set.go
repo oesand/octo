@@ -1,15 +1,15 @@
 package internal
 
 func SetOf[K comparable](items ...K) Set[K] {
-	set := make(map[K]struct{}, len(items))
+	set := make(map[K]Token, len(items))
 	for _, item := range items {
-		set[item] = struct{}{}
+		set[item] = Token{}
 	}
 	return set
 }
 
 // Set represents a simple generic hash set backed by a Go map.
-type Set[K comparable] map[K]struct{}
+type Set[K comparable] map[K]Token
 
 func (m *Set[K]) create() {
 	if *m == nil {
@@ -22,7 +22,7 @@ func (m *Set[K]) create() {
 func (m *Set[K]) Add(keys ...K) {
 	m.create()
 	for _, key := range keys {
-		(*m)[key] = struct{}{}
+		(*m)[key] = Token{}
 	}
 }
 
@@ -63,7 +63,7 @@ func (m *Set[K]) CopyFrom(other Set[K]) {
 	}
 	m.create()
 	for k := range other {
-		(*m)[k] = struct{}{}
+		(*m)[k] = Token{}
 	}
 }
 
