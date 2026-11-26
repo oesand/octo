@@ -101,9 +101,16 @@ func (cache *MemCache) janitorPurge() bool {
 	var remainEntries bool
 	var cleanKeys internal.Set[string]
 
-	cache.entries.Range(func(k, e interface{}) bool {
+	cache.entries.Range(func(k, _ interface{}) bool {
 		key := k.(string)
 		cache.keyedMu.Lock(key)
+
+		// The entry may have been removed or replaced while waiting for the key.
+		e, has := cache.entries.Load(key)
+		if !has {
+			cache.keyedMu.Unlock(key)
+			return true
+		}
 
 		entry := e.(*cacheEntry)
 		if now.Before(entry.expiredAt) {

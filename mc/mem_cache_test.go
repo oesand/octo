@@ -85,6 +85,66 @@ func TestMemCache_JanitorPurge(t *testing.T) {
 	}
 }
 
+func TestMemCache_JanitorPurgeReloadsEntryAfterLock(t *testing.T) {
+	for _, replace := range []bool{false, true} {
+		name := "removed"
+		if replace {
+			name = "replaced"
+		}
+		t.Run(name, func(t *testing.T) {
+			var cache MemCache
+			cache.entries.Store("key", &cacheEntry{expiredAt: time.Now().Add(-time.Hour)})
+			cache.keyedMu.Lock("key")
+			locked := true
+			defer func() {
+				if locked {
+					cache.keyedMu.Unlock("key")
+				}
+			}()
+
+			done := make(chan bool, 1)
+			go func() { done <- cache.janitorPurge() }()
+
+			// Wait until Range has read the old entry and is waiting for its key.
+			deadline := time.Now().Add(time.Second)
+			for {
+				cache.keyedMu.mu.Lock()
+				waiting := cache.keyedMu.locks["key"].wait > 1
+				cache.keyedMu.mu.Unlock()
+				if waiting {
+					break
+				}
+				if time.Now().After(deadline) {
+					t.Fatal("purge did not wait for the key")
+				}
+				time.Sleep(time.Millisecond)
+			}
+
+			cache.entries.Delete("key")
+			if replace {
+				cache.entries.Store("key", &cacheEntry{
+					expiredAt: time.Now().Add(time.Hour), value: "fresh",
+				})
+			}
+			cache.keyedMu.Unlock("key")
+			locked = false
+
+			select {
+			case stopped := <-done:
+				if stopped == replace {
+					t.Errorf("unexpected janitor stop decision: %v", stopped)
+				}
+			case <-time.After(time.Second):
+				t.Fatal("purge did not complete")
+			}
+			found, _, value := TryGet[string](&cache, "key")
+			if found != replace || (replace && value != "fresh") {
+				t.Fatalf("unexpected entry after purge: found=%v value=%q", found, value)
+			}
+		})
+	}
+}
+
 // Stress test: many goroutines and keys concurrently.
 func TestMemCache_ConcurrentStress(t *testing.T) {
 	var mc MemCache
