@@ -38,14 +38,13 @@ func Publish(
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	// Leave room for late results after an early return; the channel stays open.
 	results := make(chan error, len(handlers))
 	for _, handle := range handlers {
 		go func() {
 			results <- handle(ctx, event)
 		}()
 	}
-
-	defer close(results)
 
 	for i := 0; i < len(handlers); i++ {
 		select {

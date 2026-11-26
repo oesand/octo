@@ -5,11 +5,57 @@ import (
 	"errors"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/oesand/octo"
 	"github.com/oesand/octo/mediator"
 )
+
+type publishTestHandler func(context.Context, EventX) error
+
+func (h publishTestHandler) Notification(ctx context.Context, event EventX) error {
+	return h(ctx, event)
+}
+
+func TestPublish_LateResultAfterReturn(t *testing.T) {
+	for _, reason := range []string{"cancel", "handler error"} {
+		t.Run(reason, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				container := octo.New()
+				started, release := make(chan struct{}), make(chan struct{})
+				octo.InjectValue(container, publishTestHandler(func(context.Context, EventX) error {
+					close(started)
+					<-release
+					return nil
+				}))
+				ctx, cancel := context.WithCancel(context.Background())
+				defer cancel()
+				want := error(context.Canceled)
+				if reason == "cancel" {
+					go func() {
+						<-started
+						cancel()
+					}()
+				} else {
+					want = errors.New("handler failed")
+					octo.InjectValue(container, publishTestHandler(func(context.Context, EventX) error {
+						<-started
+						return want
+					}))
+				}
+
+				err := mediator.Publish(mediator.Inject(container), ctx, EventX{})
+				// The slow handler finishes only after Publish has returned.
+				close(release)
+				synctest.Wait()
+				if !errors.Is(err, want) {
+					t.Fatalf("expected %v, got %v", want, err)
+				}
+			})
+		})
+	}
+}
 
 type EventX struct {
 	Name string
