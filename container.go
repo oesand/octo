@@ -34,9 +34,10 @@ func containerOrDefault(container *Container) *Container {
 
 func injectLazy[T any](container *Container, name string, provider Provider[T]) {
 	var injection Declaration = &lazyInjection[T]{
-		container: container,
-		name:      name,
-		provider:  provider,
+		name: name,
+		value: sync.OnceValue(func() T {
+			return provider(container)
+		}),
 	}
 
 	if container.injects == nil {
@@ -49,12 +50,8 @@ func injectLazy[T any](container *Container, name string, provider Provider[T]) 
 }
 
 type lazyInjection[T any] struct {
-	container *Container
-	name      string
-
-	provider Provider[T]
-	doInit   sync.Once
-	value    T
+	name  string
+	value func() T
 }
 
 func (c *lazyInjection[T]) Type() reflect.Type {
@@ -66,11 +63,7 @@ func (c *lazyInjection[T]) Name() string {
 }
 
 func (c *lazyInjection[T]) Value() any {
-	c.doInit.Do(func() {
-		c.value = c.provider(c.container)
-	})
-
-	return c.value
+	return c.value()
 }
 
 func injectValue[T any](container *Container, name string, value T) {
