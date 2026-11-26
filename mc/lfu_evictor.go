@@ -110,7 +110,6 @@ func (lfu *lfuEvictor) GetExcess() int {
 func (lfu *lfuEvictor) IterWorst() iter.Seq[string] {
 	return func(yield func(string) bool) {
 		lfu.mu.Lock()
-		defer lfu.mu.Unlock()
 
 		// Collect existing frequencies
 		freqs := make([]int, 0, len(lfu.freqLists))
@@ -121,15 +120,22 @@ func (lfu *lfuEvictor) IterWorst() iter.Seq[string] {
 		// Lowest frequency = worst
 		slices.Sort(freqs)
 
+		keys := make([]string, 0, len(lfu.entries))
 		for _, freq := range freqs {
 			ll := lfu.freqLists[freq]
 
 			// Oldest → newest within the same frequency
 			for e := ll.Front(); e != nil; e = e.Next() {
 				ent := e.Value.(*lfuEntry)
-				if !yield(ent.key) {
-					return
-				}
+				keys = append(keys, ent.key)
+			}
+		}
+		lfu.mu.Unlock()
+
+		// Yield without the evictor mutex: callers may acquire key locks.
+		for _, key := range keys {
+			if !yield(key) {
+				return
 			}
 		}
 	}

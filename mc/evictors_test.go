@@ -1,6 +1,7 @@
 package mc
 
 import (
+	"slices"
 	"testing"
 	"time"
 )
@@ -133,5 +134,46 @@ func TestMemCache_LfuEvictionIntegration(t *testing.T) {
 	}
 	if ok, _, v := TryGet[string](c, "c"); !ok || v != "vc" {
 		t.Fatalf("expected key c to remain, got %v %v", ok, v)
+	}
+}
+
+func TestIterWorst_AllowsUpdatesDuringYield(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		evc  usageEvictor
+	}{
+		{"LRU", newLruEvictor(2)},
+		{"LFU", newLfuEvictor(2)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.evc.Used("a")
+			tc.evc.Used("b")
+			var got []string
+			var updates []chan struct{}
+			for key := range tc.evc.IterWorst() {
+				got = append(got, key)
+				done := make(chan struct{})
+				updates = append(updates, done)
+				go func() {
+					tc.evc.Used(key)
+					tc.evc.Remove(key)
+					close(done)
+				}()
+				select {
+				case <-done:
+				case <-time.After(time.Second):
+					t.Error("evictor update blocked during yield")
+				}
+				if t.Failed() {
+					break
+				}
+			}
+			for _, done := range updates {
+				<-done
+			}
+			if !slices.Equal(got, []string{"a", "b"}) {
+				t.Fatalf("unexpected snapshot order: %v", got)
+			}
+		})
 	}
 }

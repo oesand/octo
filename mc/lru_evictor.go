@@ -70,14 +70,17 @@ func (lru *lruEvictor) GetExcess() int {
 func (lru *lruEvictor) IterWorst() iter.Seq[string] {
 	return func(yield func(string) bool) {
 		lru.mu.Lock()
-		defer lru.mu.Unlock()
+		keys := make([]string, 0, lru.evictList.Len())
+		for ent := lru.evictList.Back(); ent != nil; ent = ent.Prev() {
+			keys = append(keys, ent.Value.(string))
+		}
+		lru.mu.Unlock()
 
-		ent := lru.evictList.Back()
-		for ent != nil {
-			if !yield(ent.Value.(string)) {
+		// Yield without the evictor mutex: callers may acquire key locks.
+		for _, key := range keys {
+			if !yield(key) {
 				break
 			}
-			ent = ent.Prev()
 		}
 	}
 }
