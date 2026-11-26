@@ -165,30 +165,22 @@ func TestTryResolveReturnsZeroValue(t *testing.T) {
 
 func TestResolveInjectionsIteration(t *testing.T) {
 	c := octo.New()
-	octo.InjectValue(c, &MyService{})
-	octo.InjectValue(c, &OtherService{})
-	var count atomic.Int32
+	service, other := &MyService{}, &OtherService{}
+	octo.InjectValue(c, service)
+	octo.InjectValue(c, other)
+	remaining := map[any]bool{service: true, other: true}
 
 	iter := octo.ResolveInjections(c)
 	for decl := range iter {
-		switch count.Load() {
-		case 0:
-			if !octo.OfType[*MyService](decl) {
-				t.Fatalf("expected type MyService, got %T", decl.Value())
-			}
-		case 1:
-			if !octo.OfType[*OtherService](decl) {
-				t.Fatalf("expected type OtherService, got %T", decl.Value())
-			}
-		case 2:
-			t.Fatal("unexpected iter")
+		value := decl.Value()
+		if !remaining[value] {
+			t.Fatalf("unexpected or duplicate injection: %#v", value)
 		}
-
-		count.Add(1)
+		delete(remaining, value)
 	}
 
-	if c := count.Load(); c != 2 {
-		t.Fatalf("expected 2 injection, got %d", c)
+	if len(remaining) != 0 {
+		t.Fatalf("missing injections: %v", remaining)
 	}
 }
 

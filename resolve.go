@@ -123,6 +123,7 @@ func TryResolveNamed[T any](container *Container, name string) T {
 
 // ResolveInjections returns an iterator over all registered injects in the container.
 // Each iteration uses a snapshot taken when iteration starts.
+// The order across different registered types is unspecified.
 func ResolveInjections(container *Container) iter.Seq[Declaration] {
 	container = containerOrDefault(container)
 	return func(yield func(Declaration) bool) {
