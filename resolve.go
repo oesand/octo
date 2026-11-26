@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"iter"
 	"reflect"
-	"slices"
 
 	"github.com/oesand/octo/internal"
 )
@@ -160,35 +159,4 @@ func ResolveAll[T any](container *Container) []T {
 		result = append(result, inject.Value().(T))
 	}
 	return result
-}
-
-// CleanInjections removes all inject declarations that match the selector function.
-// Do not use octo.* functions inside selector, this may cause deadlocks
-func CleanInjections(container *Container, selector func(decl Declaration) bool) {
-	container = containerOrDefault(container)
-	container.mu.Lock()
-	defer container.mu.Unlock()
-
-	removed := make(map[Declaration]bool)
-	for groupType, group := range container.injects {
-		injects := make([]Declaration, 0, len(group))
-		for _, inject := range group {
-			if !selector(inject) {
-				injects = append(injects, inject)
-			} else {
-				removed[inject] = true
-			}
-		}
-
-		if len(injects) == 0 {
-			delete(container.injects, groupType)
-		} else {
-			container.injects[groupType] = injects
-		}
-	}
-
-	container.ordered = slices.DeleteFunc(container.ordered, func(decl Declaration) bool {
-		return removed[decl]
-	})
-	container.resolveCache = nil
 }

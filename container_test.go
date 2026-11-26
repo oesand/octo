@@ -1,7 +1,6 @@
 package octo_test
 
 import (
-	"sync/atomic"
 	"testing"
 
 	"github.com/oesand/octo"
@@ -155,36 +154,6 @@ func TestInjectProviderAndResolve(t *testing.T) {
 	}
 }
 
-func TestCleanInjectionsRemovesSelected(t *testing.T) {
-	c := octo.New()
-	octo.InjectValue(c, &MyService{})
-	octo.InjectValue(c, &OtherService{})
-
-	// Remove MyService
-	octo.CleanInjections(c, func(s octo.Declaration) bool {
-		return octo.OfType[*MyService](s)
-	})
-
-	var count atomic.Int32
-	iter := octo.ResolveInjections(c)
-	for decl := range iter {
-		switch count.Load() {
-		case 0:
-			if !octo.OfType[*OtherService](decl) {
-				t.Fatalf("expected type OtherService, got %T", decl.Value())
-			}
-		case 1:
-			t.Fatal("unexpected iter")
-		}
-
-		count.Add(1)
-	}
-
-	if c := count.Load(); c != 1 {
-		t.Fatalf("expected 1 remaining service, got %d", c)
-	}
-}
-
 // Test interface
 
 func TestInjectValueAndResolveByInterface(t *testing.T) {
@@ -237,37 +206,6 @@ func TestInjectProviderAndResolveByInterface(t *testing.T) {
 	}
 	if _, ok := res.(*MyService); !ok {
 		t.Fatalf("expected MyService, got %T", res)
-	}
-}
-
-func TestCleanInjectionsRemovesSelectedByInterface(t *testing.T) {
-	c := octo.New()
-	octo.InjectValue(c, &MyService{name: "foo"})
-	octo.InjectValue(c, &OtherService{})
-	octo.InjectValue(c, &MyService{name: "bar"})
-
-	// Remove MyService
-	octo.CleanInjections(c, func(s octo.Declaration) bool {
-		return octo.OfType[ServiceInterface](s)
-	})
-
-	var count atomic.Int32
-	iter := octo.ResolveInjections(c)
-	for decl := range iter {
-		switch count.Load() {
-		case 0:
-			if !octo.OfType[*OtherService](decl) {
-				t.Fatalf("expected type OtherService, got %T", decl.Value())
-			}
-		case 1:
-			t.Fatal("unexpected iter")
-		}
-
-		count.Add(1)
-	}
-
-	if c := count.Load(); c != 1 {
-		t.Fatalf("expected 1 remaining service, got %d", c)
 	}
 }
 
