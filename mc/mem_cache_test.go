@@ -231,6 +231,64 @@ func TestMemCache_JanitorPurgeReloadsEntryAfterLock(t *testing.T) {
 	}
 }
 
+func TestMemCache_JanitorPurgeReleasesEachKeyBeforeWaitingForNext(t *testing.T) {
+	var cache MemCache
+	locked := map[string]bool{"a": true, "b": true}
+	for key := range locked {
+		cache.entries.Store(key, &cacheEntry{expiredAt: time.Now().Add(-time.Hour)})
+		cache.keyedMu.Lock(key)
+	}
+	defer func() {
+		for key, held := range locked {
+			if held {
+				cache.keyedMu.Unlock(key)
+			}
+		}
+	}()
+	done := make(chan struct{})
+	go func() {
+		JanitorPurge(&cache)
+		close(done)
+	}()
+	waitForKey := func(keys ...string) string {
+		t.Helper()
+		deadline := time.Now().Add(time.Second)
+		for time.Now().Before(deadline) {
+			cache.keyedMu.mu.Lock()
+			for _, key := range keys {
+				if entry := cache.keyedMu.locks[key]; entry != nil && entry.wait > 1 {
+					cache.keyedMu.mu.Unlock()
+					return key
+				}
+			}
+			cache.keyedMu.mu.Unlock()
+			time.Sleep(time.Millisecond)
+		}
+		t.Fatal("purge did not wait for a key")
+		return ""
+	}
+	first := waitForKey("a", "b")
+	second := "a"
+	if first == second {
+		second = "b"
+	}
+	cache.keyedMu.Unlock(first)
+	locked[first] = false
+	waitForKey(second)
+	if cache.keyedMu.TryLock(first) {
+		cache.keyedMu.Unlock(first)
+	} else {
+		t.Error("purge holds an expired key while waiting for another key")
+	}
+	cache.keyedMu.Unlock(second)
+	locked[second] = false
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("purge did not complete")
+	}
+}
+
 // Stress test: many goroutines and keys concurrently.
 func TestMemCache_ConcurrentStress(t *testing.T) {
 	var mc MemCache

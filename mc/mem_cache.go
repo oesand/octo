@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/oesand/octo"
-	"github.com/oesand/octo/internal"
 )
 
 const DefaultJanitorInterval = 1 * time.Minute
@@ -109,7 +108,6 @@ func (cache *MemCache) janitorPurge() bool {
 	now := time.Now()
 
 	var remainEntries bool
-	var cleanKeys internal.Set[string]
 
 	cache.entries.Range(func(k, _ interface{}) bool {
 		key := k.(string)
@@ -129,36 +127,32 @@ func (cache *MemCache) janitorPurge() bool {
 			return true
 		}
 
-		cleanKeys.Add(key)
+		cache.entries.Delete(key)
+		cache.removeFromEvictor(key)
+		cache.keyedMu.Unlock(key)
 		return true
 	})
 
 	if remainEntries {
 		if evc := cache.usageEvictor; evc != nil {
-			excess := evc.GetExcess() - len(cleanKeys)
+			excess := evc.GetExcess()
 			if excess > 0 {
-				i := 0
+				var removedCount int
 				for key := range evc.IterWorst() {
-					if cleanKeys.Has(key) {
-						continue
+					cache.keyedMu.Lock(key)
+					_, removed := cache.entries.LoadAndDelete(key)
+					cache.removeFromEvictor(key)
+					cache.keyedMu.Unlock(key)
+					if removed {
+						removedCount++
 					}
 
-					cache.keyedMu.Lock(key)
-					cleanKeys.Add(key)
-					i++
-
-					if i >= excess {
+					if removedCount >= excess {
 						break
 					}
 				}
 			}
 		}
-	}
-
-	for key := range cleanKeys {
-		cache.entries.Delete(key)
-		cache.removeFromEvictor(key)
-		cache.keyedMu.Unlock(key)
 	}
 
 	if !remainEntries {
