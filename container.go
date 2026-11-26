@@ -19,6 +19,7 @@ func New() *Container {
 type Container struct {
 	mu      sync.RWMutex
 	injects map[internal.ShadowType][]Declaration
+	ordered []Declaration
 
 	resolveCacheMu sync.RWMutex
 	resolveCache   map[internal.ShadowType]Declaration
@@ -44,6 +45,7 @@ func injectLazy[T any](container *Container, name string, provider Provider[T]) 
 
 	var key internal.Type[T]
 	container.injects[key] = append(container.injects[key], injection)
+	container.ordered = append(container.ordered, injection)
 }
 
 type lazyInjection[T any] struct {
@@ -83,6 +85,7 @@ func injectValue[T any](container *Container, name string, value T) {
 
 	var key internal.Type[T]
 	container.injects[key] = append(container.injects[key], injection)
+	container.ordered = append(container.ordered, injection)
 }
 
 type valueInjection[T any] struct {

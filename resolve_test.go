@@ -63,3 +63,31 @@ func TestResolveInjectionsUsesSnapshot(t *testing.T) {
 		t.Fatal("iterator blocked while changing registrations")
 	}
 }
+
+func TestResolveInterfaceRegistrationOrder(t *testing.T) {
+	for _, name := range []string{"", "target"} {
+		t.Run("name="+name, func(t *testing.T) {
+			c := octo.New()
+			// An earlier registration of the same concrete type must not
+			// give its later named registration priority over another type.
+			octo.InjectNamedValue(c, "other", 0)
+			octo.InjectNamed(c, name, func(*octo.Container) string { return "first" })
+			octo.InjectNamedValue(c, name, 1)
+			if name == "" {
+				octo.CleanInjections(c, func(d octo.Declaration) bool { return d.Name() == "other" })
+			}
+			for i := 0; i < 100; i++ {
+				// Also check after cache invalidation.
+				octo.CleanInjections(c, func(octo.Declaration) bool { return false })
+				if got := octo.ResolveNamed[any](c, name); got != "first" {
+					t.Fatalf("expected first registration, got %#v", got)
+				}
+			}
+			octo.CleanInjections(c, func(d octo.Declaration) bool { return octo.OfType[string](d) })
+			octo.InjectNamedValue(c, name, "last")
+			if got := octo.ResolveNamed[any](c, name); got != 1 {
+				t.Fatalf("expected next remaining registration, got %#v", got)
+			}
+		})
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"iter"
 	"reflect"
+	"slices"
 
 	"github.com/oesand/octo/internal"
 )
@@ -40,21 +41,12 @@ func resolve[T any](container *Container, name string) Declaration {
 		}
 	} else {
 		resolveType := typeKey.Type()
-		for groupType, group := range container.injects {
-			if len(group) == 0 || !groupType.Type().AssignableTo(resolveType) {
+		for _, inject := range container.ordered {
+			if name != "" && inject.Name() != name {
 				continue
 			}
-
-			for _, inject := range group {
-				if name != "" && inject.Name() != name {
-					continue
-				}
-
+			if inject.Type().AssignableTo(resolveType) {
 				decl = inject
-				break
-			}
-
-			if decl != nil {
 				break
 			}
 		}
@@ -177,11 +169,14 @@ func CleanInjections(container *Container, selector func(decl Declaration) bool)
 	container.mu.Lock()
 	defer container.mu.Unlock()
 
+	removed := make(map[Declaration]bool)
 	for groupType, group := range container.injects {
 		injects := make([]Declaration, 0, len(group))
 		for _, inject := range group {
 			if !selector(inject) {
 				injects = append(injects, inject)
+			} else {
+				removed[inject] = true
 			}
 		}
 
@@ -192,5 +187,8 @@ func CleanInjections(container *Container, selector func(decl Declaration) bool)
 		}
 	}
 
+	container.ordered = slices.DeleteFunc(container.ordered, func(decl Declaration) bool {
+		return removed[decl]
+	})
 	container.resolveCache = nil
 }
