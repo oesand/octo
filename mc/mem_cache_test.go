@@ -7,6 +7,67 @@ import (
 	"time"
 )
 
+func TestJanitor_StopsWithoutTick(t *testing.T) {
+	var cache MemCache
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+	cache.janitor = ticker
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		cache.runJanitor(ticker, stop)
+		close(done)
+	}()
+	ticker.Stop()
+	close(stop)
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("janitor did not exit after stop signal")
+	}
+}
+
+func TestJanitor_StaleTickerReleasesMutex(t *testing.T) {
+	var cache MemCache
+	ticker := time.NewTicker(time.Millisecond)
+	defer ticker.Stop()
+	done := make(chan struct{})
+	go func() {
+		cache.runJanitor(ticker, nil)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("stale janitor did not exit")
+	}
+	if !cache.janitorMu.TryLock() {
+		t.Fatal("janitor exited with janitorMu locked")
+	}
+	cache.janitorMu.Unlock()
+}
+
+func TestJanitor_ManualPurgeSignalsStopAndAllowsRestart(t *testing.T) {
+	cache := New(WithJanitorInterval(time.Hour))
+	var previous <-chan struct{}
+	for i := 0; i < 2; i++ {
+		cache.checkIfRunJanitor()
+		cache.janitorMu.Lock()
+		stop := cache.janitorStop
+		cache.janitorMu.Unlock()
+		if stop == nil || stop == previous {
+			t.Fatal("janitor did not start with a new stop channel")
+		}
+		JanitorPurge(cache)
+		select {
+		case <-stop:
+		default:
+			t.Fatal("manual purge did not signal janitor to stop")
+		}
+		previous = stop
+	}
+}
+
 // Test basic GetOrCreate and TryGet logic.
 func TestMemCache_Basic(t *testing.T) {
 	var mc MemCache

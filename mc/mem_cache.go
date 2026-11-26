@@ -47,6 +47,7 @@ type MemCache struct {
 	janitorMu       sync.Mutex
 	janitorInterval time.Duration
 	janitor         *time.Ticker
+	janitorStop     chan struct{}
 }
 
 type cacheEntry struct {
@@ -67,20 +68,29 @@ func (cache *MemCache) checkIfRunJanitor() {
 		interval = DefaultJanitorInterval
 	}
 	janitor := time.NewTicker(interval)
+	stop := make(chan struct{})
 	cache.janitor = janitor
-	go func() {
-		for {
-			<-janitor.C
-			cache.janitorMu.Lock()
-			if cache.janitor == nil {
-				break
-			}
-			cache.janitorMu.Unlock()
-			if cache.janitorPurge() {
-				break
-			}
+	cache.janitorStop = stop
+	go cache.runJanitor(janitor, stop)
+}
+
+func (cache *MemCache) runJanitor(janitor *time.Ticker, stop <-chan struct{}) {
+	for {
+		select {
+		case <-stop:
+			return
+		case <-janitor.C:
 		}
-	}()
+		cache.janitorMu.Lock()
+		current := cache.janitor == janitor
+		cache.janitorMu.Unlock()
+		if !current {
+			return
+		}
+		if cache.janitorPurge() {
+			break
+		}
+	}
 }
 
 func (cache *MemCache) removeFromEvictor(key string) {
@@ -165,6 +175,10 @@ func (cache *MemCache) janitorPurge() bool {
 		if cache.janitor != nil {
 			cache.janitor.Stop()
 			cache.janitor = nil
+			if cache.janitorStop != nil {
+				close(cache.janitorStop)
+				cache.janitorStop = nil
+			}
 		}
 		return true
 	}
