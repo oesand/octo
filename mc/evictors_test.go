@@ -137,6 +137,56 @@ func TestMemCache_LfuEvictionIntegration(t *testing.T) {
 	}
 }
 
+func TestGetOrCreate_HitsUpdateEvictionUsage(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		option Option
+		hits   []string
+		evict  string
+	}{
+		{"LRU", WithLruEviction(2), []string{"a"}, "b"},
+		{"LFU", WithLfuEviction(2), []string{"a", "a", "b"}, "c"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cache := New(tc.option)
+			t.Cleanup(func() {
+				for _, key := range []string{"a", "b", "c"} {
+					Forgot(cache, key)
+				}
+				JanitorPurge(cache)
+			})
+			for _, key := range []string{"a", "b"} {
+				if _, err := GetOrCreate(cache, key, time.Hour, func() (string, error) {
+					return key, nil
+				}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for _, key := range tc.hits {
+				value, err := GetOrCreate(cache, key, time.Hour, func() (string, error) {
+					t.Fatal("provider called on cache hit")
+					return "", nil
+				})
+				if err != nil || value != key {
+					t.Fatalf("unexpected cache hit: value=%q err=%v", value, err)
+				}
+			}
+			if _, err := GetOrCreate(cache, "c", time.Hour, func() (string, error) {
+				return "c", nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			JanitorPurge(cache)
+			for _, key := range []string{"a", "b", "c"} {
+				found, _, value := TryGet[string](cache, key)
+				if found != (key != tc.evict) || (found && value != key) {
+					t.Errorf("unexpected entry %q after eviction: found=%v value=%q", key, found, value)
+				}
+			}
+		})
+	}
+}
+
 func TestIterWorst_AllowsUpdatesDuringYield(t *testing.T) {
 	for _, tc := range []struct {
 		name string

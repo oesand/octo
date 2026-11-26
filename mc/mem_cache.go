@@ -225,6 +225,7 @@ func GetOrCreate[T any](cache *MemCache, key string, d time.Duration, provider f
 	if has {
 		entry = e.(*cacheEntry)
 		if time.Now().Before(entry.expiredAt) {
+			cache.pushUsedToEvictor(key)
 			return entry.value.(T), nil
 		}
 	}
